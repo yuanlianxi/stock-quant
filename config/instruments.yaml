@@ -1,0 +1,484 @@
+# T1 海龟交易系统 - 品种配置表
+# 来源：交易系统(1)2019.10.11.xlsx Sheet3 (基础资料)
+# 说明：atr_initial 为 2019 版初始 N 值，实盘需每日更新
+
+instruments:
+  # === 贵金属 === #
+  AG:
+    name: 白银
+    code: AG
+    contract_size: 15            # 15千克/手
+    price_unit: "元/千克"
+    tick: 1                      # 变动价位：1元/千克
+    point_value: 15              # 每点价值 = contract_size * tick = 15元
+    margin_ratio: 0.08           # 保证金比例 8%
+    atr_initial: 20              # 初始 ATR(N值)
+    direction: 1                 # 1=做多, -1=做空
+    correlated_group: metals
+    delivery_months: [1,3,5,7,9,11]  # 月交替
+
+  AU:
+    name: 黄金
+    code: AU
+    contract_size: 1000         # 1000克/手
+    price_unit: "元/克"
+    tick: 0.05
+    point_value: 50              # 1000*0.05=50
+    margin_ratio: 0.06
+    atr_initial: 200             # 估算，需从市场数据获取
+    direction: 1
+    correlated_group: metals
+    delivery_months: [6,12]
+
+  # === 有色金属 === #
+  CU:
+    name: 铜
+    code: CU
+    contract_size: 5             # 5吨/手
+    price_unit: "元/吨"
+    tick: 10
+    point_value: 50              # 5*10=50
+    margin_ratio: 0.08
+    atr_initial: 500            # 估算
+    direction: 1
+    correlated_group: metals
+
+  AL:
+    name: 铝
+    code: AL
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 5
+    point_value: 25
+    margin_ratio: 0.05
+    atr_initial: 100             # 估算
+    direction: 1
+    correlated_group: metals
+
+  ZN:
+    name: 锌
+    code: ZN
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 5
+    point_value: 25
+    margin_ratio: 0.06
+    atr_initial: 150
+    direction: 1
+    correlated_group: metals
+
+  PB:
+    name: 铅
+    code: PB
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 5
+    point_value: 25
+    margin_ratio: 0.05
+    atr_initial: 100             # 估算
+    direction: 1
+    correlated_group: metals
+
+  NI:
+    name: 镍
+    code: NI
+    contract_size: 1             # 1吨/手
+    price_unit: "元/吨"
+    tick: 10
+    point_value: 10
+    margin_ratio: 0.08
+    atr_initial: 500             # 估算
+    direction: 1
+    correlated_group: metals
+
+  SN:
+    name: 锡
+    code: SN
+    contract_size: 1
+    price_unit: "元/吨"
+    tick: 10
+    point_value: 10
+    margin_ratio: 0.06
+    atr_initial: 500
+    direction: 1
+    correlated_group: metals
+
+  # === 黑色金属 === #
+  RB:
+    name: 螺纹钢
+    code: RB
+    contract_size: 10            # 10吨/手
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.08
+    atr_initial: 79.05           # 2019 版实际 ATR
+    direction: 1
+    correlated_group: steel       # 与 HC/I 同组
+    delivery_months: [1,5,10]
+
+  HC:
+    name: 热卷
+    code: HC
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.08
+    atr_initial: 60              # 估算
+    direction: 1
+    correlated_group: steel       # 待确认是否并入螺纹组
+    delivery_months: [1,5,10]
+
+  I:
+    name: 铁矿石
+    code: I
+    contract_size: 100           # 100吨/手
+    price_unit: "元/吨"
+    tick: 0.5
+    point_value: 50              # 100*0.5=50
+    margin_ratio: 0.08
+    atr_initial: 5               # 估算（元/吨）
+    direction: 1
+    correlated_group: steel
+    delivery_months: [1,5,9,11]
+
+  J:
+    name: 焦炭
+    code: J
+    contract_size: 100
+    price_unit: "元/吨"
+    tick: 0.5
+    point_value: 50
+    margin_ratio: 0.09
+    atr_initial: 10
+    direction: 1
+    correlated_group: steel
+
+  JM:
+    name: 焦煤
+    code: JM
+    contract_size: 60
+    price_unit: "元/吨"
+    tick: 0.5
+    point_value: 30
+    margin_ratio: 0.09
+    atr_initial: 5
+    direction: 1
+    correlated_group: steel
+
+  # === 建材 === #
+  FG:
+    name: 玻璃
+    code: FG
+    contract_size: 20
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 20
+    margin_ratio: 0.06
+    atr_initial: 30
+    direction: 1
+    correlated_group: building
+    delivery_months: [1,5,9]
+
+  # === 能源化工 === #
+  TA:
+    name: PTA
+    code: TA
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 2
+    point_value: 10
+    margin_ratio: 0.06
+    atr_initial: 60              # 估算
+    direction: -1
+    correlated_group: energy
+    delivery_months: [1,5,9,11]
+
+  MA:
+    name: 甲醇
+    code: MA
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.07
+    atr_initial: 40
+    direction: -1
+    correlated_group: energy
+    delivery_months: [1,3,7,9,11]
+
+  BU:
+    name: 沥青
+    code: BU
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 2
+    point_value: 20
+    margin_ratio: 0.08
+    atr_initial: 50
+    direction: -1
+    correlated_group: energy
+    delivery_months: [1,6,9,12]
+
+  EG:
+    name: 乙二醇
+    code: EG
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.07
+    atr_initial: 80              # 估算
+    direction: 1
+    correlated_group: energy
+    delivery_months: [1,5,9]
+
+  PVC:
+    name: PVC
+    code: V
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 5
+    point_value: 25
+    margin_ratio: 0.07
+    atr_initial: 50
+    direction: -1
+    correlated_group: energy
+    delivery_months: [1,5,9]
+
+  L:
+    name: 塑料
+    code: L
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 5
+    point_value: 25
+    margin_ratio: 0.07
+    atr_initial: 50
+    direction: 1
+    correlated_group: energy
+    delivery_months: [1,5,9]
+
+  PP:
+    name: 聚丙烯
+    code: PP
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 5
+    margin_ratio: 0.07
+    atr_initial: 50
+    direction: 1
+    correlated_group: energy
+    delivery_months: [1,5,9]
+
+  RU:
+    name: 橡胶
+    code: RU
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 5
+    point_value: 50
+    margin_ratio: 0.08
+    atr_initial: 200             # 估算
+    direction: 1
+    correlated_group: energy
+    delivery_months: [1,3,4,5,6,7,8,9,10,11,12]  # 逐月
+
+  # === 农产品 === #
+  M:
+    name: 豆粕
+    code: M
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.08
+    atr_initial: 30
+    direction: 1
+    correlated_group: agriculture   # 与 Y/RM/OI 同组
+    delivery_months: [1,3,5,7,8,9,11]
+
+  Y:
+    name: 豆油
+    code: Y
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 2
+    point_value: 20
+    margin_ratio: 0.05
+    atr_initial: 50
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,8,9,11]
+
+  RM:
+    name: 菜粕
+    code: RM
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.06
+    atr_initial: 30
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,8,9,11]
+
+  OI:
+    name: 菜油
+    code: OI
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 2
+    point_value: 20
+    margin_ratio: 0.06
+    atr_initial: 50
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,8,9,11]
+
+  P:
+    name: 棕榈油
+    code: P
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 2
+    point_value: 20
+    margin_ratio: 0.05
+    atr_initial: 50
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,8,9,11,12]
+
+  SR:
+    name: 白糖
+    code: SR
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.06
+    atr_initial: 40
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,9,11]
+
+  CF:
+    name: 棉花
+    code: CF
+    contract_size: 5
+    price_unit: "元/吨"
+    tick: 5
+    point_value: 25
+    margin_ratio: 0.07
+    atr_initial: 150
+    direction: -1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,9,11]
+
+  A:
+    name: 豆一
+    code: A
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.07
+    atr_initial: 40
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,9,11]
+
+  C:
+    name: 玉米
+    code: C
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.07
+    atr_initial: 20
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,9,11]
+
+  JD:
+    name: 鸡蛋
+    code: JD
+    contract_size: 10
+    price_unit: "元/500千克"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.1            # 10% 保证金（较高）
+    atr_initial: 50
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,2,3,4,5,6,7,8,9,10,11,12]  # 逐月
+
+  CS:
+    name: 淀粉
+    code: CS
+    contract_size: 10
+    price_unit: "元/吨"
+    tick: 1
+    point_value: 10
+    margin_ratio: 0.07
+    atr_initial: 20
+    direction: 1
+    correlated_group: agriculture
+    delivery_months: [1,3,5,7,9,11]
+
+# === 关联组配置 === #
+# 来自交易系统(1)2019.10.11.xlsx Sheet2
+# 同组品种合计 Unit 上限为 10（关联组约束）
+correlated_groups:
+  metals:
+    name: 贵有色金属
+    members: [AG, AU, CU, AL, ZN, PB, NI, SN]
+    max_units: 10
+    note: "黄金+白银为强关联；铜/铝/锌/铅/镍/锡为有色金属组"
+
+  steel:
+    name: 黑色金属
+    members: [RB, HC, I, J, JM]
+    max_units: 10
+    note: "螺纹/热卷/铁矿/焦炭/焦煤；热卷是否并入螺纹组待季度确认"
+
+  energy:
+    name: 能源化工
+    members: [TA, MA, BU, EG, PVC, L, PP, RU]
+    max_units: 10
+
+  agriculture:
+    name: 农产品
+    members: [M, Y, RM, OI, P, SR, CF, A, C, JD, CS]
+    max_units: 10
+
+  building:
+    name: 建材
+    members: [FG]
+    max_units: 10
+
+# === 组合约束 === #
+portfolio_limits:
+  single_instrument_max: 4       # 单品种最多 4 Unit
+  high_correlation_max: 6       # 高度相关市场合计 6 Unit
+  directional_max: 12            # 单一方向（多或空）全市场最多 12 Unit
+  correlated_group_max: 10       # 关联组合计最多 10 Unit
+
+# === 不交易品种 === #
+# 来自 Sheet2 备注：粳米、20号胶、棉纱、纤板、菜籽、郑麦、晚稻、线材、胶板、普麦、早稻、粳稻
+excluded_symbols:
+  - JR       # 粳稻
+  - TS       # 20号胶（国产胶）
+  - CY       # 棉纱
+  - FB       # 纤板
+  - RS       # 菜籽
+  - WH       # 郑麦
+  - LR       # 晚稻
+  - WR       # 线材
+  - BB       # 胶板
+  - PM       # 普麦
+  - RI       # 早稻
