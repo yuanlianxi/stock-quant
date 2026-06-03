@@ -16,8 +16,8 @@
 | 项目 | 值 |
 |------|---|
 | **状态** | 进行中 |
-| **版本** | v0.8.0 |
-| **当前阶段** | 调研阶段 |
+| **版本** | v0.8.4 |
+| **当前阶段** | 阶段二（回测 + VN.py对接） |
 
 ## 项目结构
 
@@ -32,6 +32,7 @@ stock-quant/
 │       └── 0005_海龟交易策略深度调研.md
 ├── scripts/               # 交易脚本
 ├── data/                  # 数据存储
+├── api/                   # FastAPI 服务（v0.8.4 新增）
 ├── 0001_项目设计.md
 ├── 0002_技术设计.md
 ├── 0003_变更日志.md
@@ -51,10 +52,12 @@ stock-quant/
 
 ## 飞书知识库
 
-- 父节点：https://openclaw.feishu.cn/wiki/FwwkwaaGliAUOCkwmzIcULOLnhd
+- 父节点：https://openclaw.feishu.cn/wiki/CAmhwOvBLiXhaUkVidccCluDnxg
+- **Token 映射表**：详见 `0001_项目设计.md` §2.2
 
 ## 最近更新
 
+- 2026-05-26：版本更新到 v0.8.4，FastAPI 框架，position.py skip_adjust 修复
 - 2026-05-11：项目迁移到统一项目目录
 - 2026-05-07：T1基金交易系统文档完成
 - 2026-05-06：版本更新到 v0.8.0

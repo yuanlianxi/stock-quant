@@ -1,1 +1,41 @@
+# Data files
 data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+*.egg-info/
+.pytest.ini.bak
+
+# Backups
+*.bak-*
+*.bak
+*.swp
+*.tmp
+strategies/turtle/position.py.bak-phase2.2
+
+# Locust
+tests/locust_report_*.csv
+tests/locust_report_*.html
+tests/_stats.csv
+tests/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+logs/

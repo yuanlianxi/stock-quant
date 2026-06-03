@@ -1,11 +1,159 @@
 #!/usr/bin/env python3
 """
-backtest_engine.py - Backtrader 回测引擎封装
+backtest_engine.py - Backtrader 回测引擎封装（Phase 4.2 改造版）
+新增 DB 持久化函数：backtest_runs + sim_trades + sim_account
 """
 
 import backtrader as bt
+import sqlite3
+import json
+import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Dict, Any, Type
+
+# ============================================================
+# Phase 4.2 新增：DB 持久化层
+# ============================================================
+
+# 路径
+DATA_DIR = Path(__file__).parent.parent / "data"
+DB_PATH = DATA_DIR / "futures_akshare.db"
+
+
+def _conn():
+    """DB 连接（每次新建，避免跨线程问题）"""
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.execute('PRAGMA foreign_keys = ON')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _now_iso() -> str:
+    """当前时间 ISO 格式"""
+    return datetime.now().isoformat()
+
+
+def ensure_backtest_account(run_id: str) -> str:
+    """确保回测用账户存在，返回 account_id = backtest_<run_id>"""
+    account_id = f"backtest_{run_id}"
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT OR IGNORE INTO sim_account(
+                account_id, user_id, display_name, name, balance, available,
+                platform_name, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, 1000000.0, 1000000.0, 'backtest', ?, ?)
+        """, (account_id, "backtest", f"回测 {run_id[:8]}", account_id, _now_iso(), _now_iso()))
+        conn.commit()
+        return account_id
+    finally:
+        conn.close()
+
+
+def create_backtest_run(strategy_id: str, symbol: str, start_date: str, end_date: str,
+                        params: Dict[str, Any], initial_capital: float) -> str:
+    """创建 backtest_runs 记录（status=running），同时自动建 sim_account"""
+    run_id = f"bt_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        now = _now_iso()
+        cur.execute("""
+            INSERT INTO backtest_runs(
+                run_id, strategy_id, symbol, start_date, end_date,
+                params_json, status, initial_capital, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?)
+        """, (run_id, strategy_id, symbol, start_date, end_date,
+              json.dumps(params, ensure_ascii=False), initial_capital, now, now))
+        conn.commit()
+    finally:
+        conn.close()
+    # 同时创建回测账户
+    ensure_backtest_account(run_id)
+    return run_id
+
+
+def record_backtest_trade(run_id: str, trade_id: str, order_id: str,
+                          symbol: str, contract_code: str, direction: str,
+                          filled_price: float, filled_quantity: int,
+                          filled_at: str) -> bool:
+    """回测每个成交写 sim_trades（platform_name=backtest）"""
+    account_id = f"backtest_{run_id}"
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO sim_trades(
+                trade_id, order_id, account_id, session_id, symbol, contract_code,
+                direction, filled_price, filled_quantity, commission, platform_name, filled_at
+            )
+            VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, 0.0, 'backtest', ?)
+        """, (trade_id, order_id, account_id, symbol, contract_code, direction,
+              filled_price, filled_quantity, filled_at))
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        print(f"[record_backtest_trade] 失败: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def complete_backtest_run(run_id: str, final_capital: float, total_return_pct: float,
+                          max_drawdown_pct: float, total_trades: int,
+                          result_metrics: Dict[str, Any]) -> bool:
+    """回测完成时更新 backtest_runs 状态（status=completed）"""
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        now = _now_iso()
+        cur.execute("""
+            UPDATE backtest_runs
+            SET status = 'completed', final_capital = ?, total_return_pct = ?,
+                max_drawdown_pct = ?, total_trades = ?, result_metrics_json = ?,
+                completed_at = ?, updated_at = ?
+            WHERE run_id = ?
+        """, (final_capital, total_return_pct, max_drawdown_pct, total_trades,
+              json.dumps(result_metrics, ensure_ascii=False), now, now, run_id))
+        conn.commit()
+        return cur.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        print(f"[complete_backtest_run] 失败: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def fail_backtest_run(run_id: str, error_message: str) -> bool:
+    """回测失败时更新 backtest_runs 状态（status=failed）"""
+    conn = _conn()
+    try:
+        cur = conn.cursor()
+        now = _now_iso()
+        cur.execute("""
+            UPDATE backtest_runs
+            SET status = 'failed', error_message = ?, updated_at = ?
+            WHERE run_id = ?
+        """, (error_message, now, run_id))
+        conn.commit()
+        return cur.rowcount > 0
+    except Exception as e:
+        conn.rollback()
+        print(f"[fail_backtest_run] 失败: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+# ============================================================
+# 原有 Backtrader 封装（保留）
+# ============================================================
 
 
 class BacktestEngine:
