@@ -32,10 +32,17 @@ from api.routers.turtle import router as turtle_router
 from api.routers.session import router as session_router
 from api.routers.strategy import router as strategy_router
 
+# sq-0009-p5: APScheduler 集成（2 cron 任务）
+try:
+    from api.scheduler import start_scheduler
+    SCHEDULER_AVAILABLE = True
+except ImportError:
+    SCHEDULER_AVAILABLE = False
+
 app = FastAPI(
     title="Stock Quant API",
     description="海龟交易系统回测与服务接口",
-    version="0.8.4"
+    version="0.18.4"
 )
 
 # 注册域 router（Phase 4 sq-0008-p4-routers）
@@ -63,8 +70,8 @@ position_manager = PositionManager()
 # API 端点
 # ============================================================
 
-WWW_DIR = PROJECT_ROOT / "www"
-app.mount("/www", StaticFiles(directory=str(WWW_DIR), html=True), name="www")
+WWW_DIR = PROJECT_ROOT / "www_legacy_v1.5"
+app.mount("/www_legacy_v1.5", StaticFiles(directory=str(WWW_DIR), html=True), name="www_legacy_v1.5")
 
 @app.get("/")
 async def root():
@@ -74,6 +81,33 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+
+# ============================================================
+# sq-0009-p5: 启动钩子
+# ============================================================
+if SCHEDULER_AVAILABLE:
+    @app.on_event("startup")
+    async def startup_event():
+        """FastAPI 启动时启动 APScheduler + 应用 cache_schedule_state.enabled"""
+        start_scheduler()
+        # 联动：从 cache_schedule_state 读 enabled 状态，disabled 的 pause
+        from api.cache_sync import get_schedule_state
+        from api.scheduler import toggle_task
+        for s in get_schedule_state():
+            enabled = bool(s["enabled"])
+            if not enabled:
+                toggle_task(s["task_name"], False)
+                print(f"[main] {s['task_name']} enabled=0，pause")
+        print("[main] APScheduler 启动，2 cron 任务已注册")
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        """FastAPI 关闭时停止 APScheduler"""
+        from api.scheduler import stop_scheduler
+        stop_scheduler()
+        print("[main] APScheduler 停止")
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -38,6 +38,13 @@ try:
 except ImportError:
     AKSHARE_AVAILABLE = False
 
+# sq-0009-p3: 同步日线
+try:
+    from api.cache_sync import sync_daily_one, sync_daily_all
+    CACHE_SYNC_AVAILABLE = True
+except ImportError:
+    CACHE_SYNC_AVAILABLE = False
+
 router = APIRouter(tags=["market"])
 
 
@@ -252,6 +259,28 @@ async def get_daily_data(symbol: str, days: int = 30, include_atr: bool = True):
 # ============================================================
 # 同步分时数据（顺便检测信号）
 # ============================================================
+
+@router.post("/daily/sync")
+async def sync_daily_data(symbol: str = "all"):
+    """同步日线数据（sq-0009-p3）
+
+    决策 6：只做拉取，不检测信号（日线信号走 /signals/refresh 独立端点）
+    与 /minute/sync 区别：本端点不调 check_bar_signal
+
+    Args:
+        symbol: 品种代码 / 'all'（默认 33 品种全量）/ 'incremental'（增量，仅单品种）
+    """
+    if symbol.lower() == "all":
+        result = sync_daily_all(trigger_source="api:POST /daily/sync?symbol=all")
+    else:
+        result = sync_daily_one(symbol, trigger_source=f"api:POST /daily/sync?symbol={symbol}")
+
+    return {
+        "sync_type": "daily",
+        "symbol_scope": symbol,
+        "result": result,
+    }
+
 
 @router.post("/minute/sync")
 async def sync_minute_data(period: str = "5min"):

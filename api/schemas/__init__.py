@@ -8,7 +8,7 @@ Schema 拆分原则：
 Phase 3 (sq-0008-p3-schemas) 完整化版本：re-export 25 个 Pydantic 类，
 便于 P4 router 阶段 import。
 """
-from api.schemas import common, backtest, signal, market, position, strategy, session, account
+from api.schemas import common, backtest, signal, market, position, strategy, session, account, cache
 
 # 常用 re-export（router 阶段方便）
 from api.schemas.common import HealthResponse, ApiError
@@ -33,6 +33,13 @@ from api.schemas.session import (
 from api.schemas.account import (
     AccountOverview, AccountPosition, AccountTrade, AccountSession,
 )
+from api.schemas.cache import (
+    CoverageCell, CacheCoverageResponse,
+    SyncLogListItem, SyncLogListResponse, SyncLogDetail,
+    ScheduleStateItem, ScheduleStateListResponse,
+    ScheduleToggleRequest, ScheduleToggleResponse,
+    BackfillRequest, BackfillResponse,
+)
 
 __all__ = [
     # 子模块
@@ -55,4 +62,10 @@ __all__ = [
     "SessionCloseRequest", "LineOverrideRequest", "SessionSummary", "UnitInfo",
     # Account
     "AccountOverview", "AccountPosition", "AccountTrade", "AccountSession",
+    # Cache (sq-0009-p4)
+    "CoverageCell", "CacheCoverageResponse",
+    "SyncLogListItem", "SyncLogListResponse", "SyncLogDetail",
+    "ScheduleStateItem", "ScheduleStateListResponse",
+    "ScheduleToggleRequest", "ScheduleToggleResponse",
+    "BackfillRequest", "BackfillResponse",
 ]

@@ -621,6 +621,51 @@ def init_db():
     _cleanup_expired(conn)
 
     # ============================================================
+    # sq-0009-p1：缓存拉取记录 + 调度任务状态（2 张新表）
+    # ============================================================
+
+    # ===== 新表 1：cache_sync_log（拉取记录）=====
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS cache_sync_log (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol          TEXT NOT NULL,           -- 'AG' / 'ALL' / 'ag2608'
+            period          TEXT NOT NULL,           -- 'daily' / '5min' / '15min' / '30min' / '60min'
+            sync_type       TEXT NOT NULL,           -- 'scheduled' / 'manual' / 'backfill'
+            status          TEXT NOT NULL,           -- 'running' / 'success' / 'failed' / 'partial'
+            start_at        TEXT NOT NULL,
+            end_at          TEXT,
+            rows_existing   INTEGER DEFAULT 0,
+            rows_new        INTEGER DEFAULT 0,
+            rows_total      INTEGER DEFAULT 0,
+            error_message   TEXT,
+            trigger_source  TEXT,                    -- 'cron' / 'api:POST /minute/sync' / 'webapp:manual'
+            created_at      TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_csl_symbol_at   ON cache_sync_log(symbol, start_at DESC)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_csl_type_status ON cache_sync_log(sync_type, status, start_at DESC)")
+
+    # ===== 新表 2：cache_schedule_state（调度任务状态）=====
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS cache_schedule_state (
+            task_name    TEXT PRIMARY KEY,           -- 'daily_sync' / 'minute_sync_5min'
+            last_run_at  TEXT,
+            next_run_at  TEXT,
+            last_status  TEXT,                       -- 'success' / 'failed' / 'skipped'
+            run_count    INTEGER DEFAULT 0,
+            fail_count   INTEGER DEFAULT 0,
+            enabled      INTEGER DEFAULT 1,
+            updated_at   TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    # 种子数据：2 个调度任务（daily_sync + minute_sync_5min）
+    cur.execute("""
+        INSERT OR IGNORE INTO cache_schedule_state(task_name, enabled) VALUES
+            ('daily_sync', 1),
+            ('minute_sync_5min', 1)
+    """)
+
+    # ============================================================
     # 跨领域：backtest_runs（Phase 4.1）
     # ============================================================
     cur.execute("""
