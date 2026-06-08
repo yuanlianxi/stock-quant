@@ -1,11 +1,12 @@
-"""后台调度器（sq-0009-p5）
+"""后台调度器（sq-0009-p5 + sq-0009-round-3 commit 7）
 ===========================
 技术选型：APScheduler 3.x + BackgroundScheduler
 - 进程内调度，零外部依赖
 - 内存 JobStore（重启后从 cache_schedule_state 读 last_run_at 重算）
-- 2 个常驻 cron 任务：
-  - daily_sync          每天 17:00（周一至周五）
-  - minute_sync_5min    每 5 分钟 9-15 点（周一至周五）
+- 3 个常驻 cron 任务：
+  - daily_sync                  每天 17:00（周一至周五）—— 日线全量
+  - minute_sync_5min            每 5 分钟 9-15 点（周一至周五）—— 实时增量
+  - daily_full_minute_backfill  每天 17:05（周一至周五）—— 分时完整兜底
 
 启动方式（api/main.py）：
     from api.scheduler import start_scheduler
@@ -63,6 +64,29 @@ def _run_minute_5min():
         logger.error(f"[scheduler] minute_sync_5min 失败: {e}", exc_info=True)
 
 
+def _run_daily_full_minute_backfill():
+    """sq-0009-round-3 commit 7：每日 17:05 完整回填分时 5min 数据
+
+    目的：把 akshare 5min 数据源窗口（~10 天）内的所有数据完整拉到本地。
+    - 17:00 daily_sync 完成后立即触发（5 分钟后）
+    - 全 38 品种 × 5min 完整回填
+    - 实际拉到条数受 akshare 限制（10 天 ≈ 4800 条/品种）
+
+    与 minute_sync_5min 5min 频率互补：
+    - minute_sync_5min: 实时增量（单次 ~48 条）
+    - daily_full_minute_backfill: 完整兜底（10 天 ~4800 条/品种）
+    """
+    logger.info("[scheduler] daily_full_minute_backfill 启动")
+    try:
+        result = sync_minute_all(period="5min", trigger_source="cron:daily_full_minute_backfill")
+        rows_new = result.get("rows_new", 0)
+        update_schedule_after_run("daily_full_minute_backfill", "success")
+        logger.info(f"[scheduler] daily_full_minute_backfill 完成：{rows_new} 新行")
+    except Exception as e:
+        update_schedule_after_run("daily_full_minute_backfill", "failed")
+        logger.error(f"[scheduler] daily_full_minute_backfill 失败: {e}", exc_info=True)
+
+
 # ============================================================
 # 工厂
 # ============================================================
@@ -104,6 +128,21 @@ def create_scheduler() -> BackgroundScheduler:
         name="5min 分时增量同步",
         replace_existing=True,
         misfire_grace_time=120,  # 2 分钟内补跑
+    )
+
+    # 任务 3（sq-0009-round-3 commit 7）：每日 17:05 完整回填分时 5min
+    scheduler.add_job(
+        func=_run_daily_full_minute_backfill,
+        trigger=CronTrigger(
+            day_of_week="mon-fri",
+            hour=17,
+            minute=5,
+            timezone="Asia/Shanghai",
+        ),
+        id="daily_full_minute_backfill",
+        name="日盘收盘后分时完整回填（5min 兜底）",
+        replace_existing=True,
+        misfire_grace_time=600,  # 10 分钟内补跑
     )
 
     return scheduler
