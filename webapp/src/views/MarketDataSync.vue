@@ -104,6 +104,13 @@ async function doTrigger() {
     }
     await store.fetchSyncLogs(1)
     await store.fetchCoverage()
+    // commit 3 联动：拉取成功 → 自动切到 K 线 Tab 刷新（用第一个单品种）
+    const targetSym = manualSymbol.value === 'ALL' ? ALL_SYMBOLS[0] : manualSymbol.value
+    const targetPeriod = (manualPeriod.value === 'daily' ? '5min' : manualPeriod.value) as KLinePeriod
+    klineSymbol.value = targetSym
+    klinePeriod.value = targetPeriod
+    activeTab.value = 'kline'
+    await kline.fetchKLineData(targetSym, targetPeriod, 7)
   } catch (e: any) {
     toast.push({ kind: 'error', title: '拉取失败', body: String(e) })
   }
