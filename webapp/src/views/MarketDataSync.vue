@@ -160,6 +160,15 @@ async function queryKLine() {
       </span>
     </header>
 
+    <!-- sq-0009-round-3 commit 5: 数据源窗口提示 -->
+    <div v-if="store.coverage?.source_window_days" class="window-hint">
+      📌 <strong>akshare 数据源窗口</strong>：
+      <span v-for="(days, p) in store.coverage.source_window_days" :key="p" class="window-tag">
+        {{ p }}: ≤ {{ days }} 天
+      </span>
+      <span class="hint-tip">超出窗口的拉取会得到 0 条（数据源限制）</span>
+    </div>
+
     <nav class="tab-bar">
       <button :class="{ active: activeTab === 'coverage' }" @click="activeTab = 'coverage'">1. 覆盖率</button>
       <button :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">2. 拉取记录</button>
@@ -394,4 +403,7 @@ th { background: var(--card); }
 .kline-toolbar button { padding: 6px 16px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .kline-toolbar button:disabled { opacity: 0.5; }
 .source-badge { font-size: 12px; padding: 4px 10px; background: var(--card); border-radius: 4px; border: 1px solid var(--border); }
+.window-hint { font-size: 12px; color: var(--muted); padding: 8px 12px; background: var(--card); border-radius: 4px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.window-tag { padding: 2px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; font-family: monospace; }
+.hint-tip { color: #eab308; }
 </style>

@@ -264,6 +264,17 @@ _COVERAGE_THRESHOLDS = {
     '60min':   {'fresh_sec': 1 * 3600,   'stale_sec': 4 * 3600},
 }
 
+# 数据源窗口（v1.7+sq-0009-round-3 commit 5 新增）
+# 5/15/30/60min 受 akshare 限制（新浪期货页只展示最近 5-10 天）
+# daily 历史可拉 3+ 年
+SOURCE_WINDOW_DAYS = {
+    'daily':   1095,    # 3 年
+    '5min':    10,      # 新浪期货页只展示 ~10 天
+    '15min':   10,
+    '30min':   10,
+    '60min':   10,
+}
+
 
 def get_coverage() -> dict:
     """按品种 × 周期覆盖率（38 品种 × 5 周期矩阵）
@@ -277,6 +288,7 @@ def get_coverage() -> dict:
         {
           "symbols": ["AG", "AU", ...],
           "periods": ["daily", "5min", ...],
+          "source_window_days": {"daily": 1095, "5min": 10, ...},  # sq-0009-round-3 commit 5
           "matrix": {
             "AG": {
               "daily": {"latest": "2026-06-04", "status": "fresh"},
@@ -353,6 +365,7 @@ def get_coverage() -> dict:
         return {
             "symbols": list(ALL_PRODUCTS),
             "periods": periods,
+            "source_window_days": SOURCE_WINDOW_DAYS,  # sq-0009-round-3 commit 5
             "matrix": matrix,
             "summary": {
                 "total_symbols": len(ALL_PRODUCTS),

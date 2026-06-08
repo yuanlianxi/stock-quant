@@ -12,6 +12,8 @@ export interface CoverageCell {
 export interface CoverageResponse {
   symbols: string[]
   periods: string[]
+  /** sq-0009-round-3 commit 5: 各周期 akshare 数据源支持的最长天数 */
+  source_window_days: Record<string, number>
   matrix: Record<string, Record<string, CoverageCell>>
   summary: {
     total_symbols: number
