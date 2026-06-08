@@ -4,6 +4,8 @@ import { useMarketStore } from '@/stores/market'
 import { useToast } from '@/composables/useToast'
 import { marketApi } from '@/services/market'
 import { sessionApi } from '@/services/session'
+import { useKLineData, type KLinePeriod } from '@/composables/useKLineData'
+import KLineChart from '@/components/KLineChart.vue'
 import SignalTimeline from '@/views/SignalTimeline.vue'
 import PriceLineBar from '@/views/PriceLineBar.vue'
 import UnitDetail from '@/views/UnitDetail.vue'
@@ -18,6 +20,7 @@ interface Position {
 
 const market = useMarketStore()
 const toast = useToast()
+const kline = useKLineData()
 
 const position = ref<Position | null>(null)
 const signals = ref<any[]>([])
@@ -26,6 +29,7 @@ const lines = ref<{ stop_loss?: number; add?: number; take_profit?: number; warn
 const currentPrice = ref<number>(0)
 const loading = ref(false)
 const chartError = ref<string>('')
+const chartPeriod = ref<KLinePeriod>('15min')
 
 const curSym = computed(() => market.curSym)
 
@@ -36,6 +40,11 @@ watch(
   },
   { immediate: true }
 )
+
+// 周期切换时重查 K 线
+watch(chartPeriod, async () => {
+  if (curSym.value) await kline.fetchKLineData(curSym.value, chartPeriod.value, 7)
+})
 
 async function loadDetail(sym: string) {
   loading.value = true
@@ -56,10 +65,9 @@ async function loadDetail(sym: string) {
       signals.value = []
     }
 
-    // 3. 拉 minute 占位（用 lightweight-charts 在 Phase D）
+    // 3. 拉 K 线（commit 4：解锁 lightweight-charts）
     try {
-      await marketApi.minute(sym, { period: '15min', limit: 1 })
-      // 不渲染，Phase D 集成
+      await kline.fetchKLineData(sym, chartPeriod.value, 7)
     } catch (e) {
       chartError.value = 'K线数据加载失败'
     }
@@ -156,14 +164,21 @@ function fmtPrice(n?: number): string {
     </div>
 
     <div class="detail-grid">
-      <!-- 左：K 线图（占位）-->
+      <!-- 左：K 线图（commit 4：解锁 lightweight-charts）-->
       <div class="col col-chart">
-        <h4 class="col-title">K 线图</h4>
-        <div class="chart-placeholder">
-          <span v-if="loading">⟳ 加载中...</span>
-          <span v-else-if="chartError">{{ chartError }}</span>
-          <span v-else>K线图（Phase D 集成 lightweight-charts）</span>
-        </div>
+        <h4 class="col-title">
+          K 线图
+          <select v-model="chartPeriod" class="period-select">
+            <option value="5min">5min</option>
+            <option value="15min">15min</option>
+            <option value="30min">30min</option>
+            <option value="60min">60min</option>
+          </select>
+          <span v-if="kline.source.value === 'cache'" class="src-tag src-cache">🟢 缓存</span>
+          <span v-else-if="kline.source.value === 'resample'" class="src-tag src-resample">🟡 resample</span>
+          <span v-else-if="kline.source.value === 'empty'" class="src-tag src-empty">⚪ 空</span>
+        </h4>
+        <KLineChart :data="kline.data.value" :height="320" />
       </div>
 
       <!-- 中：持仓 + Session -->
@@ -249,6 +264,24 @@ function fmtPrice(n?: number): string {
   display: flex; align-items: center; justify-content: center;
   color: var(--muted); font-size: 12px;
 }
+.period-select {
+  margin-left: 8px;
+  padding: 2px 6px;
+  font-size: 11px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.src-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+.src-cache { background: rgba(34,197,94,0.15); color: #22c55e; }
+.src-resample { background: rgba(234,179,8,0.15); color: #eab308; }
+.src-empty { background: rgba(156,163,175,0.15); color: #9ca3af; }
 
 .pos-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .pos-dir.long { color: var(--buy); font-weight: 600; }
