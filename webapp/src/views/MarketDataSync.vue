@@ -14,6 +14,8 @@ import { ALL_SYMBOLS } from '@/config/symbols'
 import { useToast } from '@/composables/useToast'
 import { useKLineData, type KLinePeriod, type KLineSource } from '@/composables/useKLineData'
 import KLineChart from '@/components/KLineChart.vue'
+import { marketApi } from '@/services/market'
+import { cacheApi } from '@/services/cache'
 
 const store = useCacheStore()
 const toast = useToast()
@@ -22,9 +24,19 @@ const kline = useKLineData()
 // Tab 切换
 const activeTab = ref<'coverage' | 'logs' | 'manual' | 'schedule' | 'kline'>('coverage')
 
-// 手动拉取表单
+// 手动拉取表单（commit 2 增强）
 const manualSymbol = ref<string>('AG')
 const manualPeriod = ref<'daily' | '5min' | '15min' | '30min' | '60min'>('daily')
+const manualSyncType = ref<'incremental' | 'backfill'>('incremental')
+const manualStartDate = ref<string>(new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10))
+const manualEndDate = ref<string>(new Date().toISOString().slice(0, 10))
+// 计算回填天数
+const backfillDays = computed(() => {
+  if (!manualStartDate.value || !manualEndDate.value) return 0
+  const a = new Date(manualStartDate.value).getTime()
+  const b = new Date(manualEndDate.value).getTime()
+  return Math.max(0, Math.floor((b - a) / 86400_000) + 1)
+})
 
 // K 线图表单（Tab 5）
 const klineSymbol = ref<string>('AG')
@@ -71,15 +83,26 @@ async function changePage(p: number) {
   await store.fetchSyncLogs(p)
 }
 
-// 手动拉取
+// 手动拉取（commit 2 增强：全品种 + 时间范围 + sync_type）
 async function doTrigger() {
   try {
-    const r = await store.triggerSync(manualSymbol.value, manualPeriod.value)
-    toast.push({
-      kind: 'success',
-      title: '✅ 拉取完成',
-      body: `${manualSymbol.value} ${manualPeriod.value}: 新增 ${r.rows_new ?? 0} 行`,
-    })
+    if (manualSyncType.value === 'incremental') {
+      // 增量：调 /daily/sync 或 /minute/sync
+      const sym = manualSymbol.value === 'ALL' ? 'all' : manualSymbol.value
+      if (manualPeriod.value === 'daily') {
+        await marketApi.dailySync(sym)
+        toast.push({ kind: 'success', title: '✅ 日线同步触发', body: `${manualSymbol.value}` })
+      } else {
+        await marketApi.minuteSync({ symbol: sym, period: manualPeriod.value })
+        toast.push({ kind: 'success', title: '✅ 分时同步触发', body: `${manualSymbol.value} ${manualPeriod.value}` })
+      }
+    } else {
+      // 回填：调 /cache/backfill
+      const days = backfillDays.value || 7
+      const r: any = await cacheApi.backfill(manualSymbol.value, manualPeriod.value, undefined, days)
+      toast.push({ kind: 'success', title: '✅ 回填完成', body: `${manualSymbol.value} ${manualPeriod.value}: 新增 ${r.rows_new ?? 0} 行 (${days} 天)` })
+    }
+    await store.fetchSyncLogs(1)
     await store.fetchCoverage()
   } catch (e: any) {
     toast.push({ kind: 'error', title: '拉取失败', body: String(e) })
@@ -217,11 +240,12 @@ async function queryKLine() {
       </div>
     </section>
 
-    <!-- Tab 3: 手动拉取 -->
+    <!-- Tab 3: 手动拉取（v1.7+sq-0009-round-2 commit 2 增强）-->
     <section v-if="activeTab === 'manual'" class="tab-panel">
       <div class="form">
         <label>品种
           <select v-model="manualSymbol">
+            <option value="ALL">📦 全部 ({{ ALL_SYMBOLS.length }} 品种)</option>
             <option v-for="s in ALL_SYMBOLS" :key="s" :value="s">{{ s }}</option>
           </select>
         </label>
@@ -234,6 +258,21 @@ async function queryKLine() {
             <option value="60min">60min</option>
           </select>
         </label>
+        <label>同步类型
+          <select v-model="manualSyncType">
+            <option value="incremental">增量（最新数据）</option>
+            <option value="backfill">回填（按时间范围）</option>
+          </select>
+        </label>
+        <template v-if="manualSyncType === 'backfill'">
+          <label>开始日期
+            <input type="date" v-model="manualStartDate" />
+          </label>
+          <label>结束日期
+            <input type="date" v-model="manualEndDate" />
+          </label>
+          <span class="hint">回填范围 [{{ manualStartDate || '?' }}, {{ manualEndDate || '?' }}] ({{ backfillDays }} 天)</span>
+        </template>
         <button @click="doTrigger" :disabled="store.triggerLoading">
           {{ store.triggerLoading ? '拉取中...' : '立即拉取' }}
         </button>
