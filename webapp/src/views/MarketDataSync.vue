@@ -8,7 +8,7 @@
     5. K 线图（lightweight-charts 渲染）
 -->
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useCacheStore } from '@/stores/cache'
 import { ALL_SYMBOLS } from '@/config/symbols'
 import { useToast } from '@/composables/useToast'
@@ -38,10 +38,25 @@ const backfillDays = computed(() => {
   return Math.max(0, Math.floor((b - a) / 86400_000) + 1)
 })
 
-// K 线图表单（Tab 5）
+// K 线图表单（Tab 5）—— commit 6 加 days 范围选择
 const klineSymbol = ref<string>('AG')
 const klinePeriod = ref<KLinePeriod>('15min')
 const klineDays = ref<number>(7)
+const minutePeriods: KLinePeriod[] = ['5min', '15min', '30min', '60min']
+const isKlineMinutePeriod = computed(() => minutePeriods.includes(klinePeriod.value))
+const klineDaysOptions = computed(() => {
+  if (isKlineMinutePeriod.value) {
+    return [7, 30, 180]   // 分时：7/30/180
+  } else {
+    return [7, 30, 180, 365, 730, 1095]  // 日线：7/30/180/365/730/1095
+  }
+})
+// 切到分时周期时如果 days 超出，自动降级
+watch(klinePeriod, () => {
+  if (isKlineMinutePeriod.value && klineDays.value > 180) {
+    klineDays.value = 7
+  }
+})
 
 // 记录过滤
 const filterSymbol = ref<string>('')
@@ -319,7 +334,7 @@ async function queryKLine() {
       </div>
     </section>
 
-    <!-- Tab 5: K 线图（v1.7+sq-0009-round-2 commit 1）-->
+    <!-- Tab 5: K 线图（v1.7+sq-0009-round-2 commit 1 + round-3 commit 6）-->
     <section v-if="activeTab === 'kline'" class="tab-panel">
       <div class="kline-toolbar">
         <label>品种
@@ -335,8 +350,12 @@ async function queryKLine() {
             <option value="60min">60min</option>
           </select>
         </label>
-        <label>天数
-          <input type="number" v-model.number="klineDays" min="1" max="180" style="width: 70px" />
+        <label>范围
+          <select v-model.number="klineDays" :title="isKlineMinutePeriod ? '分时周期最长 180 天（akshare 数据源仅 ~10 天）' : '日线最长 3 年'">
+            <option v-for="d in klineDaysOptions" :key="d" :value="d">
+              {{ d === 7 ? '7 天' : d === 30 ? '30 天' : d === 180 ? '半年' : d === 365 ? '1 年' : d === 730 ? '2 年' : d === 1095 ? '3 年' : `${d} 天` }}
+            </option>
+          </select>
         </label>
         <button @click="queryKLine" :disabled="kline.loading.value">
           {{ kline.loading.value ? '查询中...' : '查询 K 线' }}

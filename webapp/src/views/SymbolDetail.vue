@@ -30,8 +30,28 @@ const currentPrice = ref<number>(0)
 const loading = ref(false)
 const chartError = ref<string>('')
 const chartPeriod = ref<KLinePeriod>('15min')
+const chartDays = ref<number>(7)  // sq-0009-round-3 commit 6
 
 const curSym = computed(() => market.curSym)
+
+// 周期 × 范围联动约束（commit 6）
+// 5/15/30/60min 受 akshare 数据源限制（≤10 天），允许用户拉更远但会得到空
+// 但 UI 提示：分时周期禁用 >180 天的选项（半年已是分时极限）
+const minutePeriods: KLinePeriod[] = ['5min', '15min', '30min', '60min']
+const isMinutePeriod = computed(() => minutePeriods.includes(chartPeriod.value))
+const daysOptions = computed(() => {
+  if (isMinutePeriod.value) {
+    return [7, 30, 180]   // 分时周期：7天 / 30天 / 半年
+  } else {
+    return [7, 30, 180, 365, 730, 1095]  // 日线：7天/30天/半年/1年/2年/3年
+  }
+})
+// 切到分时周期时，如果当前 days 超出范围，自动降级
+watch(chartPeriod, () => {
+  if (isMinutePeriod.value && chartDays.value > 180) {
+    chartDays.value = 7
+  }
+})
 
 watch(
   () => market.curSym,
@@ -41,9 +61,9 @@ watch(
   { immediate: true }
 )
 
-// 周期切换时重查 K 线
-watch(chartPeriod, async () => {
-  if (curSym.value) await kline.fetchKLineData(curSym.value, chartPeriod.value, 7)
+// 周期/范围切换时重查 K 线
+watch([chartPeriod, chartDays], async () => {
+  if (curSym.value) await kline.fetchKLineData(curSym.value, chartPeriod.value, chartDays.value)
 })
 
 async function loadDetail(sym: string) {
@@ -65,9 +85,9 @@ async function loadDetail(sym: string) {
       signals.value = []
     }
 
-    // 3. 拉 K 线（commit 4：解锁 lightweight-charts）
+    // 3. 拉 K 线（commit 4：解锁 lightweight-charts + commit 6：days 选择）
     try {
-      await kline.fetchKLineData(sym, chartPeriod.value, 7)
+      await kline.fetchKLineData(sym, chartPeriod.value, chartDays.value)
     } catch (e) {
       chartError.value = 'K线数据加载失败'
     }
@@ -164,7 +184,7 @@ function fmtPrice(n?: number): string {
     </div>
 
     <div class="detail-grid">
-      <!-- 左：K 线图（commit 4：解锁 lightweight-charts）-->
+      <!-- 左：K 线图（commit 4：解锁 lightweight-charts + commit 6：days 选择）-->
       <div class="col col-chart">
         <h4 class="col-title">
           K 线图
@@ -173,6 +193,11 @@ function fmtPrice(n?: number): string {
             <option value="15min">15min</option>
             <option value="30min">30min</option>
             <option value="60min">60min</option>
+          </select>
+          <select v-model.number="chartDays" class="period-select" :title="isMinutePeriod ? '分时周期最长 180 天（aksource 数据源仅 ~10 天）' : '日线最长 3 年'">
+            <option v-for="d in daysOptions" :key="d" :value="d">
+              {{ d === 7 ? '7 天' : d === 30 ? '30 天' : d === 180 ? '半年' : d === 365 ? '1 年' : d === 730 ? '2 年' : d === 1095 ? '3 年' : `${d} 天` }}
+            </option>
           </select>
           <span v-if="kline.source.value === 'cache'" class="src-tag src-cache">🟢 缓存</span>
           <span v-else-if="kline.source.value === 'resample'" class="src-tag src-resample">🟡 resample</span>
