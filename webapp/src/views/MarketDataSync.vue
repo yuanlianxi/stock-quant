@@ -1,26 +1,35 @@
 <!--
-  MarketDataSync.vue（sq-0009-p6）
-  4 Tab:
+  MarketDataSync.vue（sq-0009-p6 + v1.7+sq-0009-round-2 commit 1）
+  5 Tab:
     1. 覆盖率（38 品种 × 5 周期矩阵）
     2. 拉取记录（分页 + 过滤）
     3. 手动拉取（选品种 + period + 触发）
     4. 调度状态（2 任务卡片 + 启停）
+    5. K 线图（lightweight-charts 渲染）
 -->
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useCacheStore } from '@/stores/cache'
 import { ALL_SYMBOLS } from '@/config/symbols'
 import { useToast } from '@/composables/useToast'
+import { useKLineData, type KLinePeriod, type KLineSource } from '@/composables/useKLineData'
+import KLineChart from '@/components/KLineChart.vue'
 
 const store = useCacheStore()
 const toast = useToast()
+const kline = useKLineData()
 
 // Tab 切换
-const activeTab = ref<'coverage' | 'logs' | 'manual' | 'schedule'>('coverage')
+const activeTab = ref<'coverage' | 'logs' | 'manual' | 'schedule' | 'kline'>('coverage')
 
 // 手动拉取表单
 const manualSymbol = ref<string>('AG')
 const manualPeriod = ref<'daily' | '5min' | '15min' | '30min' | '60min'>('daily')
+
+// K 线图表单（Tab 5）
+const klineSymbol = ref<string>('AG')
+const klinePeriod = ref<KLinePeriod>('15min')
+const klineDays = ref<number>(7)
 
 // 记录过滤
 const filterSymbol = ref<string>('')
@@ -93,6 +102,22 @@ async function doToggle(taskName: string, enabled: boolean) {
 
 // 总览
 const summary = computed(() => store.coverage?.summary)
+
+// ===== Tab 5: K 线图 =====
+
+// 数据源标签映射
+const sourceLabel = computed<KLineSource | null>(() => kline.source.value)
+const sourceBadge = computed(() => {
+  if (kline.source.value === 'cache') return { text: '🟢 缓存', color: '#22c55e' }
+  if (kline.source.value === 'resample') return { text: '🟡 Resample (5min→目标)', color: '#eab308' }
+  if (kline.source.value === 'empty') return { text: '⚪ 空', color: '#9ca3af' }
+  return null
+})
+
+// 查询 K 线
+async function queryKLine() {
+  await kline.fetchKLineData(klineSymbol.value, klinePeriod.value, klineDays.value)
+}
 </script>
 
 <template>
@@ -110,6 +135,7 @@ const summary = computed(() => store.coverage?.summary)
       <button :class="{ active: activeTab === 'logs' }" @click="activeTab = 'logs'">2. 拉取记录</button>
       <button :class="{ active: activeTab === 'manual' }" @click="activeTab = 'manual'">3. 手动拉取</button>
       <button :class="{ active: activeTab === 'schedule' }" @click="activeTab = 'schedule'">4. 调度状态</button>
+      <button :class="{ active: activeTab === 'kline' }" @click="activeTab = 'kline'">5. K 线图</button>
     </nav>
 
     <!-- Tab 1: 覆盖率 -->
@@ -237,6 +263,38 @@ const summary = computed(() => store.coverage?.summary)
         </div>
       </div>
     </section>
+
+    <!-- Tab 5: K 线图（v1.7+sq-0009-round-2 commit 1）-->
+    <section v-if="activeTab === 'kline'" class="tab-panel">
+      <div class="kline-toolbar">
+        <label>品种
+          <select v-model="klineSymbol">
+            <option v-for="s in ALL_SYMBOLS" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </label>
+        <label>周期
+          <select v-model="klinePeriod">
+            <option value="5min">5min</option>
+            <option value="15min">15min</option>
+            <option value="30min">30min</option>
+            <option value="60min">60min</option>
+          </select>
+        </label>
+        <label>天数
+          <input type="number" v-model.number="klineDays" min="1" max="180" style="width: 70px" />
+        </label>
+        <button @click="queryKLine" :disabled="kline.loading.value">
+          {{ kline.loading.value ? '查询中...' : '查询 K 线' }}
+        </button>
+        <span v-if="sourceBadge" class="source-badge" :style="{ color: sourceBadge.color }">
+          数据源：{{ sourceBadge.text }}（{{ kline.data.value.length }} 条）
+        </span>
+        <span v-if="kline.error.value" class="error" style="margin-left: 12px">
+          ❌ {{ kline.error.value }}
+        </span>
+      </div>
+      <KLineChart :data="kline.data.value" :height="500" />
+    </section>
   </div>
 </template>
 
@@ -284,4 +342,10 @@ th { background: var(--card); }
 .btn-start, .btn-stop { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; color: #fff; margin-top: 12px; }
 .btn-start { background: #22c55e; }
 .btn-stop { background: #eab308; }
+.kline-toolbar { display: flex; gap: 16px; align-items: center; padding: 12px 0; flex-wrap: wrap; }
+.kline-toolbar label { display: flex; gap: 4px; align-items: center; font-size: 13px; }
+.kline-toolbar select, .kline-toolbar input { padding: 4px 8px; }
+.kline-toolbar button { padding: 6px 16px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+.kline-toolbar button:disabled { opacity: 0.5; }
+.source-badge { font-size: 12px; padding: 4px 10px; background: var(--card); border-radius: 4px; border: 1px solid var(--border); }
 </style>
