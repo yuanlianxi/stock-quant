@@ -79,10 +79,14 @@ export const cacheApi = {
                         ),
 
   /** 回填历史 */
-  backfill:           (symbol: string, period: string, years?: number, days?: number) => {
+  backfill:           (symbol: string, period: string, years?: number, days?: number,
+                        startDate?: string, endDate?: string) => {
                         const params = new URLSearchParams({ symbol, period })
                         if (years != null) params.set('years', String(years))
                         if (days != null) params.set('days', String(days))
+                        // sq-0009-round-4 commit 9: 时间范围透传
+                        if (startDate) params.set('start_date', startDate)
+                        if (endDate) params.set('end_date', endDate)
                         return useApi().post<any>(`/cache/backfill?${params.toString()}`)
                       },
 

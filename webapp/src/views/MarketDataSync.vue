@@ -112,9 +112,12 @@ async function doTrigger() {
         toast.push({ kind: 'success', title: '✅ 分时同步触发', body: `${manualSymbol.value} ${manualPeriod.value}` })
       }
     } else {
-      // 回填：调 /cache/backfill
+      // 回填：调 /cache/backfill（commit 9: 透传 start_date/end_date）
       const days = backfillDays.value || 7
-      const r: any = await cacheApi.backfill(manualSymbol.value, manualPeriod.value, undefined, days)
+      const r: any = await cacheApi.backfill(
+        manualSymbol.value, manualPeriod.value, undefined, days,
+        manualStartDate.value, manualEndDate.value
+      )
       toast.push({ kind: 'success', title: '✅ 回填完成', body: `${manualSymbol.value} ${manualPeriod.value}: 新增 ${r.rows_new ?? 0} 行 (${days} 天)` })
     }
     await store.fetchSyncLogs(1)

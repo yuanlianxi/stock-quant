@@ -642,6 +642,8 @@ def init_db():
             created_at      TEXT DEFAULT (datetime('now'))
         )
     """)
+    _add_column_if_not_exists(cur, "cache_sync_log", "start_date", "TEXT")   # sq-0009-round-4 commit 9
+    _add_column_if_not_exists(cur, "cache_sync_log", "end_date", "TEXT")     # sq-0009-round-4 commit 9
     cur.execute("CREATE INDEX IF NOT EXISTS idx_csl_symbol_at   ON cache_sync_log(symbol, start_at DESC)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_csl_type_status ON cache_sync_log(sync_type, status, start_at DESC)")
 

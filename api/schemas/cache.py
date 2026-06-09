@@ -114,6 +114,8 @@ class BackfillRequest(BaseModel):
     period: str                          # 'daily' / '5min' / '15min' / '30min' / '60min'
     years: Optional[int] = None          # period='daily' 时用
     days: Optional[int] = None           # period='5min/15min/30min/60min' 时用
+    start_date: Optional[str] = None     # sq-0009-round-4 commit 9: 用户选择范围
+    end_date: Optional[str] = None       # sq-0009-round-4 commit 9: 用户选择范围
 
 
 class BackfillResponse(BaseModel):
@@ -124,3 +126,5 @@ class BackfillResponse(BaseModel):
     status: str                          # success / failed
     years: Optional[int] = None
     days: Optional[int] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None

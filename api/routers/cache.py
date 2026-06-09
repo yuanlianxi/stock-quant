@@ -122,26 +122,31 @@ async def trigger_backfill(
     period: str,
     years: Optional[int] = None,
     days: Optional[int] = None,
+    start_date: Optional[str] = None,   # sq-0009-round-4 commit 9
+    end_date: Optional[str] = None,     # sq-0009-round-4 commit 9
 ):
-    """回填历史数据（sq-0009-p4）
+    """回填历史数据（sq-0009-p4 + sq-0009-round-4 commit 9）
 
     Args:
         symbol: 品种代码
         period: 'daily' / '5min' / '15min' / '30min' / '60min'
         years: period='daily' 时用（如 3 = 回填 3 年）
         days:  period='5min/15min/30min/60min' 时用（如 30 = 回填 30 天）
+        start_date/end_date: 用户选择的时间范围（YYYY-MM-DD），仅记录到 cache_sync_log
 
     Note: akshare 限制，分钟数据实际只能回填最近 5-10 天
     """
     if period == "daily":
         if years is None:
             years = 3  # 默认 3 年
-        result = cs_backfill_daily(symbol, years=years, trigger_source="api:POST /cache/backfill")
+        result = cs_backfill_daily(symbol, years=years, trigger_source="api:POST /cache/backfill",
+                                   start_date=start_date, end_date=end_date)
         return result
     elif period in ("5min", "15min", "30min", "60min"):
         if days is None:
             days = 7   # 默认 7 天
-        result = cs_backfill_minute(symbol, period=period, days=days, trigger_source="api:POST /cache/backfill")
+        result = cs_backfill_minute(symbol, period=period, days=days, trigger_source="api:POST /cache/backfill",
+                                     start_date=start_date, end_date=end_date)
         return result
     else:
         raise HTTPException(status_code=400, detail=f"invalid period: {period}")

@@ -29,7 +29,8 @@ from data.data_loader import (
 # 内部：日志包装层（sq-0009-p2 内部，所有 sync_* 入口都用）
 # ============================================================
 
-def _log_start(symbol: str, period: str, sync_type: str, trigger_source: str) -> int:
+def _log_start(symbol: str, period: str, sync_type: str, trigger_source: str,
+              start_date: Optional[str] = None, end_date: Optional[str] = None) -> int:
     """写一条 status='running' 日志，返回 log_id
 
     Args:
@@ -37,15 +38,17 @@ def _log_start(symbol: str, period: str, sync_type: str, trigger_source: str) ->
         period: 'daily' / '5min' / '15min' / '30min' / '60min'
         sync_type: 'manual' / 'backfill'（'scheduled' 由 P5 包装层写入）
         trigger_source: 'api:POST /cache/sync/daily' / 'webapp:manual' / 'cron:minute_sync_5min'
+        start_date: 'YYYY-MM-DD' 用户选择范围（仅记录，commit 9 sq-0009-round-4）
+        end_date:   'YYYY-MM-DD' 用户选择范围
     """
     start_at = datetime.now().isoformat()
     conn = get_conn()
     try:
         cur = conn.execute("""
             INSERT INTO cache_sync_log
-            (symbol, period, sync_type, status, start_at, trigger_source)
-            VALUES (?, ?, ?, 'running', ?, ?)
-        """, (symbol, period, sync_type, start_at, trigger_source))
+            (symbol, period, sync_type, status, start_at, trigger_source, start_date, end_date)
+            VALUES (?, ?, ?, 'running', ?, ?, ?, ?)
+        """, (symbol, period, sync_type, start_at, trigger_source, start_date, end_date))
         conn.commit()
         return cur.lastrowid
     finally:
@@ -205,13 +208,16 @@ def sync_minute_all(period: str, trigger_source: str) -> dict:
 # 回填函数（2 个）
 # ============================================================
 
-def backfill_daily(symbol: str, years: int, trigger_source: str) -> dict:
+def backfill_daily(symbol: str, years: int, trigger_source: str,
+               start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
     """回填日线历史
 
-    包装 data.data_loader.backfill_daily_history
+    Args:
+        years: 历史年数（默认 3）
+        start_date/end_date: 用户选择的时间范围（仅记录，commit 9 sq-0009-round-4）
     """
     sym = symbol.upper()
-    log_id = _log_start(sym, 'daily', 'backfill', trigger_source)
+    log_id = _log_start(sym, 'daily', 'backfill', trigger_source, start_date, end_date)
     try:
         n = backfill_daily_history(sym, years=years)
         _log_end(log_id, 'success', rows_new=n, rows_total=n)
@@ -219,6 +225,8 @@ def backfill_daily(symbol: str, years: int, trigger_source: str) -> dict:
             "symbol": sym,
             "period": "daily",
             "years": years,
+            "start_date": start_date,
+            "end_date": end_date,
             "rows_new": n,
             "status": "success",
         }
@@ -227,15 +235,18 @@ def backfill_daily(symbol: str, years: int, trigger_source: str) -> dict:
         raise
 
 
-def backfill_minute(symbol: str, period: str, days: int, trigger_source: str) -> dict:
+def backfill_minute(symbol: str, period: str, days: int, trigger_source: str,
+                start_date: Optional[str] = None, end_date: Optional[str] = None) -> dict:
     """回填分时历史
 
-    包装 data.data_loader.backfill_min_history
+    Args:
+        days: 历史天数（默认 7）
+        start_date/end_date: 用户选择的时间范围（仅记录，commit 9 sq-0009-round-4）
     """
     if period not in ('1min', '5min', '15min', '30min', '60min'):
         raise ValueError(f"invalid period: {period}")
     sym = symbol.upper()
-    log_id = _log_start(sym, period, 'backfill', trigger_source)
+    log_id = _log_start(sym, period, 'backfill', trigger_source, start_date, end_date)
     try:
         n = backfill_min_history(sym, days=days, period=period)
         _log_end(log_id, 'success', rows_new=n, rows_total=n)
@@ -243,6 +254,8 @@ def backfill_minute(symbol: str, period: str, days: int, trigger_source: str) ->
             "symbol": sym,
             "period": period,
             "days": days,
+            "start_date": start_date,
+            "end_date": end_date,
             "rows_new": n,
             "status": "success",
         }
