@@ -334,27 +334,12 @@ async function queryKLine() {
       </div>
     </section>
 
-    <!-- Tab 5: K 线图（v1.7+sq-0009-round-2 commit 1 + round-3 commit 6）-->
+    <!-- Tab 5: K 线图（v1.7+sq-0009-round-2 commit 1 + round-3 commit 6/8 平铺 chip）-->
     <section v-if="activeTab === 'kline'" class="tab-panel">
       <div class="kline-toolbar">
         <label>品种
           <select v-model="klineSymbol">
             <option v-for="s in ALL_SYMBOLS" :key="s" :value="s">{{ s }}</option>
-          </select>
-        </label>
-        <label>周期
-          <select v-model="klinePeriod">
-            <option value="5min">5min</option>
-            <option value="15min">15min</option>
-            <option value="30min">30min</option>
-            <option value="60min">60min</option>
-          </select>
-        </label>
-        <label>范围
-          <select v-model.number="klineDays" :title="isKlineMinutePeriod ? '分时周期最长 180 天（akshare 数据源仅 ~10 天）' : '日线最长 3 年'">
-            <option v-for="d in klineDaysOptions" :key="d" :value="d">
-              {{ d === 7 ? '7 天' : d === 30 ? '30 天' : d === 180 ? '半年' : d === 365 ? '1 年' : d === 730 ? '2 年' : d === 1095 ? '3 年' : `${d} 天` }}
-            </option>
           </select>
         </label>
         <button @click="queryKLine" :disabled="kline.loading.value">
@@ -366,6 +351,27 @@ async function queryKLine() {
         <span v-if="kline.error.value" class="error" style="margin-left: 12px">
           ❌ {{ kline.error.value }}
         </span>
+      </div>
+      <!-- commit 8: 平铺 chip 按钮组 -->
+      <div class="chip-row">
+        <div class="chip-label">周期</div>
+        <div class="chip-group">
+          <button v-for="p in (['5min', '15min', '30min', '60min'] as KLinePeriod[])" :key="p"
+                  :class="{ active: klinePeriod === p }"
+                  @click="klinePeriod = p">
+            {{ p }}
+          </button>
+        </div>
+      </div>
+      <div class="chip-row">
+        <div class="chip-label">范围</div>
+        <div class="chip-group" :title="isKlineMinutePeriod ? '分时周期最长 180 天（akshare 数据源仅 ~10 天）' : '日线最长 3 年'">
+          <button v-for="d in klineDaysOptions" :key="d"
+                  :class="{ active: klineDays === d }"
+                  @click="klineDays = d">
+            {{ d === 7 ? '7 天' : d === 30 ? '30 天' : d === 180 ? '半年' : d === 365 ? '1 年' : d === 730 ? '2 年' : d === 1095 ? '3 年' : `${d} 天` }}
+          </button>
+        </div>
       </div>
       <KLineChart :data="kline.data.value" :height="500" />
     </section>
@@ -422,6 +428,17 @@ th { background: var(--card); }
 .kline-toolbar button { padding: 6px 16px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
 .kline-toolbar button:disabled { opacity: 0.5; }
 .source-badge { font-size: 12px; padding: 4px 10px; background: var(--card); border-radius: 4px; border: 1px solid var(--border); }
+/* commit 8: 平铺 chip 按钮组 */
+.chip-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.chip-label { font-size: 11px; color: var(--muted); min-width: 30px; }
+.chip-group { display: inline-flex; gap: 2px; padding: 2px 4px; background: var(--card); border-radius: 4px; border: 1px solid var(--border); }
+.chip-group button {
+  padding: 4px 10px; background: transparent; border: none;
+  color: var(--muted); font-size: 11px; cursor: pointer;
+  border-radius: 3px; transition: all 0.15s;
+}
+.chip-group button:hover { background: var(--bg); color: var(--text); }
+.chip-group button.active { background: var(--accent); color: #fff; font-weight: 600; }
 .window-hint { font-size: 12px; color: var(--muted); padding: 8px 12px; background: var(--card); border-radius: 4px; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .window-tag { padding: 2px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; font-family: monospace; }
 .hint-tip { color: #eab308; }

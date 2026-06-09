@@ -184,25 +184,35 @@ function fmtPrice(n?: number): string {
     </div>
 
     <div class="detail-grid">
-      <!-- 左：K 线图（commit 4：解锁 lightweight-charts + commit 6：days 选择）-->
+      <!-- 左：K 线图（commit 4：解锁 lightweight-charts + commit 6：days 选择 + commit 8：平铺 chip）-->
       <div class="col col-chart">
         <h4 class="col-title">
           K 线图
-          <select v-model="chartPeriod" class="period-select">
-            <option value="5min">5min</option>
-            <option value="15min">15min</option>
-            <option value="30min">30min</option>
-            <option value="60min">60min</option>
-          </select>
-          <select v-model.number="chartDays" class="period-select" :title="isMinutePeriod ? '分时周期最长 180 天（aksource 数据源仅 ~10 天）' : '日线最长 3 年'">
-            <option v-for="d in daysOptions" :key="d" :value="d">
-              {{ d === 7 ? '7 天' : d === 30 ? '30 天' : d === 180 ? '半年' : d === 365 ? '1 年' : d === 730 ? '2 年' : d === 1095 ? '3 年' : `${d} 天` }}
-            </option>
-          </select>
           <span v-if="kline.source.value === 'cache'" class="src-tag src-cache">🟢 缓存</span>
           <span v-else-if="kline.source.value === 'resample'" class="src-tag src-resample">🟡 resample</span>
           <span v-else-if="kline.source.value === 'empty'" class="src-tag src-empty">⚪ 空</span>
         </h4>
+        <!-- commit 8: 平铺 chip 按钮组（period + days） -->
+        <div class="chip-row">
+          <div class="chip-label">周期</div>
+          <div class="chip-group">
+            <button v-for="p in (['5min', '15min', '30min', '60min'] as KLinePeriod[])" :key="p"
+                    :class="{ active: chartPeriod === p }"
+                    @click="chartPeriod = p">
+              {{ p }}
+            </button>
+          </div>
+        </div>
+        <div class="chip-row">
+          <div class="chip-label">范围</div>
+          <div class="chip-group" :title="isMinutePeriod ? '分时周期最长 180 天（akshare 数据源仅 ~10 天）' : '日线最长 3 年'">
+            <button v-for="d in daysOptions" :key="d"
+                    :class="{ active: chartDays === d }"
+                    @click="chartDays = d">
+              {{ d === 7 ? '7 天' : d === 30 ? '30 天' : d === 180 ? '半年' : d === 365 ? '1 年' : d === 730 ? '2 年' : d === 1095 ? '3 年' : `${d} 天` }}
+            </button>
+          </div>
+        </div>
         <KLineChart :data="kline.data.value" :height="320" />
       </div>
 
@@ -307,6 +317,18 @@ function fmtPrice(n?: number): string {
 .src-cache { background: rgba(34,197,94,0.15); color: #22c55e; }
 .src-resample { background: rgba(234,179,8,0.15); color: #eab308; }
 .src-empty { background: rgba(156,163,175,0.15); color: #9ca3af; }
+
+/* commit 8: 平铺 chip 按钮组 */
+.chip-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.chip-label { font-size: 11px; color: var(--muted); min-width: 30px; }
+.chip-group { display: inline-flex; gap: 2px; padding: 2px 4px; background: var(--card); border-radius: 4px; border: 1px solid var(--border); }
+.chip-group button {
+  padding: 4px 10px; background: transparent; border: none;
+  color: var(--muted); font-size: 11px; cursor: pointer;
+  border-radius: 3px; transition: all 0.15s;
+}
+.chip-group button:hover { background: var(--bg); color: var(--text); }
+.chip-group button.active { background: var(--accent); color: #fff; font-weight: 600; }
 
 .pos-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .pos-dir.long { color: var(--buy); font-weight: 600; }
