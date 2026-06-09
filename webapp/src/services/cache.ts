@@ -38,6 +38,9 @@ export interface SyncLogItem {
   error_message: string | null
   trigger_source: string | null
   created_at: string
+  /** sq-0009-round-4 commit 9: 用户选择的时间范围 */
+  start_date: string | null
+  end_date: string | null
 }
 
 export interface SyncLogListResponse {

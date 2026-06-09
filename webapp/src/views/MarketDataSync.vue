@@ -249,7 +249,10 @@ async function queryKLine() {
         <thead>
           <tr>
             <th>ID</th><th>品种</th><th>周期</th><th>类型</th><th>状态</th>
-            <th>新增/总</th><th>开始</th><th>触发源</th>
+            <th>existing/new/total</th>
+            <th>开始 → 结束</th>
+            <th>时间范围</th>
+            <th>触发源</th>
           </tr>
         </thead>
         <tbody>
@@ -259,8 +262,26 @@ async function queryKLine() {
             <td>{{ log.period }}</td>
             <td>{{ log.sync_type }}</td>
             <td :class="'status-' + log.status">{{ log.status }}</td>
-            <td>{{ log.rows_new }} / {{ log.rows_total }}</td>
-            <td class="ts">{{ log.start_at }}</td>
+            <td>
+              <span title="rows_existing 已存在 / rows_new 新增 / rows_total 理论总数">
+                <span class="num-existed">{{ log.rows_existing ?? 0 }}</span>
+                /
+                <span class="num-new" :class="log.rows_new > 0 ? 'has-new' : 'no-new'">{{ log.rows_new ?? 0 }}</span>
+                /
+                <span class="num-total">{{ log.rows_total ?? 0 }}</span>
+              </span>
+            </td>
+            <td class="ts">
+              <div>{{ log.start_at }}</div>
+              <div v-if="log.end_at" class="ts-end">→ {{ log.end_at }}</div>
+              <div v-else class="ts-end ts-running">⟳ 运行中</div>
+            </td>
+            <td class="ts">
+              <span v-if="log.start_date || log.end_date">
+                {{ log.start_date || '?' }} <br/>~ {{ log.end_date || '?' }}
+              </span>
+              <span v-else class="muted">—</span>
+            </td>
             <td class="ts">{{ log.trigger_source }}</td>
           </tr>
         </tbody>
@@ -405,6 +426,13 @@ th { background: var(--card); }
 .status-partial { color: #eab308; }
 .status-running { color: #3b82f6; }
 .ts { font-family: monospace; font-size: 11px; }
+.ts-end { color: var(--muted); font-size: 10px; margin-top: 1px; }
+.ts-running { color: #3b82f6; }
+.muted { color: var(--muted); }
+.num-existed { color: var(--muted); }
+.num-new.has-new { color: #22c55e; font-weight: 600; }
+.num-new.no-new { color: var(--muted); }
+.num-total { color: var(--text); font-weight: 600; }
 .pager { display: flex; gap: 12px; align-items: center; margin-top: 12px; justify-content: center; }
 .pager button { padding: 4px 12px; }
 .pager button:disabled { opacity: 0.5; }
