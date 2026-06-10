@@ -85,9 +85,17 @@ export function useKLineData() {
             const dailyDays = Math.min(Math.max(daysNeeded, days), 1095)
             const dailyResp = await api.get<any>(`/daily/${symbol}`, { days: dailyDays })
             if (dailyResp?.records?.length > 0) {
-              const dailyBars = normalizeDailyAs5min(dailyResp.records)
-              bars = mergeBars(bars, dailyBars)
-              source.value = 'mix'
+              // 过滤：只保留 minute 中没出现的日期（避免重复 + 视觉错位）
+              const minuteDates = new Set(bars.map(b => b.datetime.slice(0, 10)))
+              const missingDailyRecords = dailyResp.records.filter((r: any) => {
+                const d = (r.datetime || r.date || '').slice(0, 10)
+                return d && !minuteDates.has(d)
+              })
+              if (missingDailyRecords.length > 0) {
+                const dailyBars = normalizeDailyAs5min(missingDailyRecords)
+                bars = mergeBars(bars, dailyBars)
+                source.value = 'mix'
+              }
               data.value = bars
               return { data: data.value, source: source.value }
             }
