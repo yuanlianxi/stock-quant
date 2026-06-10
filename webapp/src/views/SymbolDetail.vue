@@ -37,6 +37,7 @@ const curSym = computed(() => market.curSym)
 // 周期 × 范围联动约束（commit 6）
 // 5/15/30/60min 受 akshare 数据源限制（≤10 天），允许用户拉更远但会得到空
 // 但 UI 提示：分时周期禁用 >180 天的选项（半年已是分时极限）
+// commit 11 加 daily：日线时 days 全开
 const minutePeriods: KLinePeriod[] = ['5min', '15min', '30min', '60min']
 const isMinutePeriod = computed(() => minutePeriods.includes(chartPeriod.value))
 const daysOptions = computed(() => {
@@ -196,7 +197,7 @@ function fmtPrice(n?: number): string {
         <div class="chip-row">
           <div class="chip-label">周期</div>
           <div class="chip-group">
-            <button v-for="p in (['5min', '15min', '30min', '60min'] as KLinePeriod[])" :key="p"
+            <button v-for="p in (['5min', '15min', '30min', '60min', 'daily'] as KLinePeriod[])" :key="p"
                     :class="{ active: chartPeriod === p }"
                     @click="chartPeriod = p">
               {{ p }}

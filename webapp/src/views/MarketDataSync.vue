@@ -376,11 +376,11 @@ async function queryKLine() {
           ❌ {{ kline.error.value }}
         </span>
       </div>
-      <!-- commit 8: 平铺 chip 按钮组 -->
+      <!-- commit 8 + commit 11: 平铺 chip + daily -->
       <div class="chip-row">
         <div class="chip-label">周期</div>
         <div class="chip-group">
-          <button v-for="p in (['5min', '15min', '30min', '60min'] as KLinePeriod[])" :key="p"
+          <button v-for="p in (['5min', '15min', '30min', '60min', 'daily'] as KLinePeriod[])" :key="p"
                   :class="{ active: klinePeriod === p }"
                   @click="klinePeriod = p">
             {{ p }}
