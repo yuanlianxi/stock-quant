@@ -157,28 +157,25 @@ function normalizeBars(records: any[]): KLineBar[] {
 }
 
 /**
- * sq-0009-round-5 hotfix6+8+9：日线 → 30 根 5min 蜡烛
+ * sq-0009-round-5 hotfix6+7+10：日线 → 30 根 5min 蜡烛
  *
  * 用户方案：1 条 daily 数据拆为 30 根 5min 蜡烛
- * - datetime 起点 = 当天 15:30 local，toISOString 错转 UTC 8 小时
- * - 实际 datetime = 5/8 15:30 local → 5/8 07:30 UTC
- * - 5min 5/8 23:30 local → 5/8 15:30 UTC
- * - 两者在 chart 上**同一位置**（5/8 15:30 UTC）—— daily 蜡烛显示在 5min 23:30 段
- * - 30 根 datetime 跨度 5/8 07:30 ~ 09:55 UTC（local 15:30-17:55）
+ * - datetime 从当天 15:05:00 开始（5min 收盘 15:00 + 5min），每 5min 1 根
+ * - 30 根共 2.5 小时（15:05 ~ 17:30），与 5min 收盘不冲突
+ * - OHLC 全部用 daily 值（high=high, low=low, open=open, close=close）
+ * - bar_type='daily' 标记
  *
- * OHLC 线性插值（hotfix8 修复"等高"问题）：
- * - bar 0: open=daily.open, close=daily.open（起点）
- * - bar 1..28: open=前一根 close, close=open + (daily.close - daily.open) * i/29
- * - bar 29: open=前一根 close, close=daily.close（终点）
- * - 每根 high≥barOpen/close, low≤barOpen/close
+ * ⚠️ hotfix7 修复：datetime 字符串直接构造（不走 toISOString），
+ * 避免 UTC 时区错位导致 daily 平线蜡烛被错放到 5min 23:30 位置
  *
- * ⚠️ hotfix9 调整回：datetime 走 toISOString（hotfix6 行为）
- * 让 daily 蜡烛错位到 5min 23:30 位置（用户期望位置）
- * + 保留 hotfix8 的 OHLC 线性插值（避免"等高"）
+ * ⚠️ hotfix10 回退：撤销 hotfix8 的 OHLC 线性插值
+ * - hotfix8 加的线性插值**不是**根因
+ * - 30 根 OHLC 全部 = daily 真实值（high=daily.high, low=daily.low, open=daily.open, close=daily.close）
+ * - 30 根平线蜡烛（等高）—— 这是 daily 蜡烛的本质
  *
- * 时间轴布局（5/8 当天 UTC 时间）：
- * |---- 5min 5/8 01:30 ~ 07:00 UTC (66 根) ----|--- daily 5/8 07:30 ~ 09:55 UTC (30 根) ---|
- * | （5min 23:30 ~ 5/9 01:00 local）         | （daily 15:30 ~ 17:55 local，重合）   |
+ * 时间轴布局（5/8 当天）：
+ * |---- 5min 5/8 09:30 ~ 15:00 (66 根) ----|-- daily 5/8 15:05 ~ 17:30 (30 根) --|
+ * |---------------- 5/8 视觉占 1 天宽度 ----------------|
  */
 function normalizeDailyAs5min(dailyRecords: any[]): KLineBar[] {
   const result: KLineBar[] = []
@@ -193,44 +190,24 @@ function normalizeDailyAs5min(dailyRecords: any[]): KLineBar[] {
     if (isNaN(open) || isNaN(close)) continue
 
     // daily 拆 30 根 5min 蜡烛
-    // datetime 起点 = 当天 15:30 local（5min 收盘 15:00 + 30min）
-    // 用 toISOString 错转 UTC 8 小时 → 实际 datetime = 5/8 07:30 UTC
-    // → 5min 5/8 23:30 local = 5/8 15:30 UTC → daily 5/8 15:30 local = 5/8 07:30 UTC
-    // → 两者 UTC 时间差 8h，但 lightweight-charts 按 datetime 字符串排序时会"错位"
-    //   导致 daily 蜡烛被错放到 5min 23:30 时间段（用户期望位置）
-    const baseTime = new Date(`${dateStr}T15:30:00`)
+    // datetime 从当天 15:05:00 开始（5min 收盘 15:00 + 5min），每 5min 1 根
+    // 用模板字符串直接构造（不调 toISOString 避免 UTC 时区错位）
     const volumePerBar = (Number(r.volume ?? 0)) / 30
-
-    // 30 根线性插值（避免 close=open 一字线）
-    let prevClose = open
     for (let i = 0; i < 30; i++) {
-      // toISOString 错转 UTC 8 小时（用户期望的"daily 在 23:30 段"行为）
-      const barTime = new Date(baseTime.getTime() + i * 5 * 60_000)
-      const dtStr = barTime.toISOString().slice(0, 19).replace('T', ' ')
-
-      let barOpen: number
-      let barClose: number
-      if (i === 0) {
-        barOpen = open
-        barClose = open
-      } else if (i === 29) {
-        barOpen = prevClose
-        barClose = close
-      } else {
-        barOpen = prevClose
-        barClose = open + (close - open) * (i / 29)
-      }
-
+      // 15:05 + i*5min
+      const totalMinutes = 15 * 60 + 5 + i * 5
+      const h = Math.floor(totalMinutes / 60)
+      const m = totalMinutes % 60
+      const dtStr = `${dateStr} ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
       result.push({
         datetime: dtStr,
-        open: barOpen,
-        high: Math.max(barOpen, barClose, high),
-        low: Math.min(barOpen, barClose, low),
-        close: barClose,
+        open,
+        high,
+        low,
+        close,
         volume: volumePerBar,
         bar_type: 'daily' as const,
       })
-      prevClose = barClose
     }
   }
   return result
