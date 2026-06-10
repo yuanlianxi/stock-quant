@@ -157,11 +157,17 @@ function normalizeBars(records: any[]): KLineBar[] {
 }
 
 /**
- * sq-0009-round-5 commit 12：日线 → 5min 时间占位
+ * sq-0009-round-5 hotfix6：日线 → 30 根 5min 蜡烛
  *
- * 日线 datetime 用当天最后 5min 时段（23:55:00），让 chart 在时间轴上
- * 自然占更宽时长（1 天 ≈ 288 × 5min 宽度）
- * bar_type='daily' 标记，前端可区分渲染
+ * 用户方案：1 条 daily 数据拆为 30 根 5min 蜡烛
+ * - datetime 从当天 15:30:00 开始（5min 收盘后 30 分钟）每 5 分钟 1 根
+ * - OHLC 全部用 daily 值（high=high, low=low, open=open, close=close）
+ * - 30 根横向铺开 → 视觉上"占 1 天宽度"（30 × 5min = 2.5 小时 ≈ 当天 1 天）
+ * - bar_type='daily' 标记
+ *
+ * 时间轴布局：
+ * |---- 5min 5/8 09:30 ~ 15:00 (66 根) ----|--- daily 5/8 15:30 ~ 17:55 (30 根) ---|
+ * |---------------- 5/8 视觉占 1 天宽度 ----------------|
  */
 function normalizeDailyAs5min(dailyRecords: any[]): KLineBar[] {
   const result: KLineBar[] = []
@@ -170,17 +176,29 @@ function normalizeDailyAs5min(dailyRecords: any[]): KLineBar[] {
     const dateStr = (r.datetime || r.date || '').slice(0, 10)
     if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue
     const open = Number(r.open)
+    const high = Number(r.high)
+    const low = Number(r.low)
     const close = Number(r.close)
     if (isNaN(open) || isNaN(close)) continue
-    result.push({
-      datetime: `${dateStr} 23:55:00`,
-      open,
-      high: Number(r.high),
-      low: Number(r.low),
-      close,
-      volume: Number(r.volume ?? 0),
-      bar_type: 'daily' as const,
-    })
+
+    // daily 拆 30 根 5min 蜡烛
+    // datetime 从当天 15:30:00 开始，每 5 分钟 1 根，30 根共 2.5 小时
+    // 不与 5min 序列冲突（5min 最晚 15:00）
+    const baseTime = new Date(`${dateStr}T15:30:00`)
+    const volumePerBar = (Number(r.volume ?? 0)) / 30
+    for (let i = 0; i < 30; i++) {
+      const barTime = new Date(baseTime.getTime() + i * 5 * 60_000)
+      const dtStr = barTime.toISOString().slice(0, 19).replace('T', ' ')
+      result.push({
+        datetime: dtStr,
+        open,
+        high,
+        low,
+        close,
+        volume: volumePerBar,
+        bar_type: 'daily' as const,
+      })
+    }
   }
   return result
 }
