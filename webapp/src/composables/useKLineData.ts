@@ -23,6 +23,8 @@ interface KLineBar {
   low: number
   close: number
   volume: number
+  /** sq-0009-round-5 hotfix2: bar 类型标记（minute=分时/daily=日线补缺）*/
+  bar_type?: 'minute' | 'daily'
 }
 
 export function useKLineData() {
@@ -64,12 +66,23 @@ export function useKLineData() {
       if (r1?.records?.length > 0) {
         let bars = normalizeBars(r1.records)
 
-        // 2. mixDaily：当 period='5min' + days>10，额外拉日线补 5min 窗口外缺失区间
-        // 关键：daily days 必须是用户选范围的 2x（akshare 5min 窗口 ~10 天，5min 缓存可能少于此）
-        // 比如 5min 缓存 5/18 起，days=180 时需要 daily 覆盖 5/18 之前 → 至少 180+ 天
-        if (mixDaily && period === '5min' && days > 10) {
+        // 2. mixDaily：所有分时周期都支持（5/15/30/60min）+ days>10
+        // 智能补缺：用 5min 实际最早日期动态算 daily 拉取范围
+        // 例：5min 最早 5/29，days=180 → daily 拉 (now - 5/29) + buffer ≈ 6 个月
+        const isMinute = (period === '5min' || period === '15min' || period === '30min' || period === '60min')
+        if (mixDaily && isMinute && days > 10) {
           try {
-            const dailyDays = Math.max(days * 2, days + 30)
+            // 用 5min 实际最早日期算 daily 起点
+            const earliestMinDt = bars[0].datetime  // 'YYYY-MM-DD HH:MM:SS'
+            const earliestDate = earliestMinDt.slice(0, 10)  // 'YYYY-MM-DD'
+            // daily 需要覆盖 (用户期望起点 ~ 5min 最早日期)
+            // 但 /daily 端点 days=N 是相对 now 的，所以传 N 让 daily 覆盖到 N 天前
+            // 算：从 now 到 5min 最早日期的天数 + buffer
+            const earliestMs = new Date(earliestDate).getTime()
+            const nowMs = Date.now()
+            const daysNeeded = Math.ceil((nowMs - earliestMs) / 86400_000) + 10  // +10 buffer
+            // 后端 daily 端点单次最多 3 年
+            const dailyDays = Math.min(Math.max(daysNeeded, days), 1095)
             const dailyResp = await api.get<any>(`/daily/${symbol}`, { days: dailyDays })
             if (dailyResp?.records?.length > 0) {
               const dailyBars = normalizeDailyAs5min(dailyResp.records)
@@ -79,7 +92,7 @@ export function useKLineData() {
               return { data: data.value, source: source.value }
             }
           } catch {
-            // 拉日线失败时不影响 5min 数据
+            // 拉日线失败时不影响分时数据
           }
         }
 
@@ -131,7 +144,7 @@ export function useKLineData() {
 // ============================================================
 
 function normalizeBars(records: any[]): KLineBar[] {
-  /** 后端 records 格式 → KLineBar[] */
+  /** 后端 records 格式 → KLineBar[]（标记为 minute）*/
   return records.map(r => ({
     datetime: r.datetime,
     open: Number(r.open),
@@ -139,6 +152,7 @@ function normalizeBars(records: any[]): KLineBar[] {
     low: Number(r.low),
     close: Number(r.close),
     volume: Number(r.volume ?? 0),
+    bar_type: 'minute' as const,
   })).filter(b => !isNaN(b.open) && !isNaN(b.close))
 }
 
@@ -147,27 +161,34 @@ function normalizeBars(records: any[]): KLineBar[] {
  *
  * 日线 datetime 用当天最后 5min 时段（23:55:00），让 chart 在时间轴上
  * 自然占更宽时长（1 天 ≈ 288 × 5min 宽度）
+ * bar_type='daily' 标记，前端可区分渲染
  */
 function normalizeDailyAs5min(dailyRecords: any[]): KLineBar[] {
-  return dailyRecords
-    .map(r => {
-      // 后端 daily records 的 datetime 格式：'YYYY-MM-DD'
-      const dateStr = (r.datetime || r.date || '').slice(0, 10)
-      if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null
-      return {
-        datetime: `${dateStr} 23:55:00`,
-        open: Number(r.open),
-        high: Number(r.high),
-        low: Number(r.low),
-        close: Number(r.close),
-        volume: Number(r.volume ?? 0),
-      }
+  const result: KLineBar[] = []
+  for (const r of dailyRecords) {
+    // 后端 daily records 的 datetime 格式：'YYYY-MM-DD'
+    const dateStr = (r.datetime || r.date || '').slice(0, 10)
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) continue
+    const open = Number(r.open)
+    const close = Number(r.close)
+    if (isNaN(open) || isNaN(close)) continue
+    result.push({
+      datetime: `${dateStr} 23:55:00`,
+      open,
+      high: Number(r.high),
+      low: Number(r.low),
+      close,
+      volume: Number(r.volume ?? 0),
+      bar_type: 'daily' as const,
     })
-    .filter((b): b is KLineBar => b !== null && !isNaN(b.open) && !isNaN(b.close))
+  }
+  return result
 }
 
 /**
  * 合并 5min + 日线补齐：按 datetime 升序去重
+ * - 5min 数据保留 bar_type='minute'
+ * - daily 数据保留 bar_type='daily'（前端用这个区分渲染）
  */
 function mergeBars(bars5: KLineBar[], dailyBars: KLineBar[]): KLineBar[] {
   const seen = new Set<string>()
