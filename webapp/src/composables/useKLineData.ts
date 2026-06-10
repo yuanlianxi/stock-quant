@@ -157,16 +157,19 @@ function normalizeBars(records: any[]): KLineBar[] {
 }
 
 /**
- * sq-0009-round-5 hotfix6：日线 → 30 根 5min 蜡烛
+ * sq-0009-round-5 hotfix6+7：日线 → 30 根 5min 蜡烛
  *
  * 用户方案：1 条 daily 数据拆为 30 根 5min 蜡烛
- * - datetime 从当天 15:30:00 开始（5min 收盘后 30 分钟）每 5 分钟 1 根
+ * - datetime 从当天 15:05:00 开始（5min 收盘 15:00 + 5min），每 5min 1 根
+ * - 30 根共 2.5 小时（15:05 ~ 17:30），与 5min 收盘不冲突
  * - OHLC 全部用 daily 值（high=high, low=low, open=open, close=close）
- * - 30 根横向铺开 → 视觉上"占 1 天宽度"（30 × 5min = 2.5 小时 ≈ 当天 1 天）
  * - bar_type='daily' 标记
  *
- * 时间轴布局：
- * |---- 5min 5/8 09:30 ~ 15:00 (66 根) ----|--- daily 5/8 15:30 ~ 17:55 (30 根) ---|
+ * ⚠️ hotfix7 修复：datetime 字符串直接构造（不走 toISOString），
+ * 避免 UTC 时区错位导致 daily 平线蜡烛被错放到 5min 23:30 位置
+ *
+ * 时间轴布局（5/8 当天）：
+ * |---- 5min 5/8 09:30 ~ 15:00 (66 根) ----|-- daily 5/8 15:05 ~ 17:30 (30 根) --|
  * |---------------- 5/8 视觉占 1 天宽度 ----------------|
  */
 function normalizeDailyAs5min(dailyRecords: any[]): KLineBar[] {
@@ -182,13 +185,15 @@ function normalizeDailyAs5min(dailyRecords: any[]): KLineBar[] {
     if (isNaN(open) || isNaN(close)) continue
 
     // daily 拆 30 根 5min 蜡烛
-    // datetime 从当天 15:30:00 开始，每 5 分钟 1 根，30 根共 2.5 小时
-    // 不与 5min 序列冲突（5min 最晚 15:00）
-    const baseTime = new Date(`${dateStr}T15:30:00`)
+    // datetime 从当天 15:05:00 开始（5min 收盘 15:00 + 5min），每 5min 1 根
+    // 用模板字符串直接构造（不调 toISOString 避免 UTC 时区错位）
     const volumePerBar = (Number(r.volume ?? 0)) / 30
     for (let i = 0; i < 30; i++) {
-      const barTime = new Date(baseTime.getTime() + i * 5 * 60_000)
-      const dtStr = barTime.toISOString().slice(0, 19).replace('T', ' ')
+      // 15:05 + i*5min
+      const totalMinutes = 15 * 60 + 5 + i * 5
+      const h = Math.floor(totalMinutes / 60)
+      const m = totalMinutes % 60
+      const dtStr = `${dateStr} ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
       result.push({
         datetime: dtStr,
         open,
