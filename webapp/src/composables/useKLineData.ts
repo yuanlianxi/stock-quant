@@ -65,9 +65,12 @@ export function useKLineData() {
         let bars = normalizeBars(r1.records)
 
         // 2. mixDaily：当 period='5min' + days>10，额外拉日线补 5min 窗口外缺失区间
+        // 关键：daily days 必须是用户选范围的 2x（akshare 5min 窗口 ~10 天，5min 缓存可能少于此）
+        // 比如 5min 缓存 5/18 起，days=180 时需要 daily 覆盖 5/18 之前 → 至少 180+ 天
         if (mixDaily && period === '5min' && days > 10) {
           try {
-            const dailyResp = await api.get<any>(`/daily/${symbol}`, { days })
+            const dailyDays = Math.max(days * 2, days + 30)
+            const dailyResp = await api.get<any>(`/daily/${symbol}`, { days: dailyDays })
             if (dailyResp?.records?.length > 0) {
               const dailyBars = normalizeDailyAs5min(dailyResp.records)
               bars = mergeBars(bars, dailyBars)
