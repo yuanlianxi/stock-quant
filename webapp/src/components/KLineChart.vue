@@ -74,7 +74,16 @@ function updateData() {
     close: bar.close,
   }))
   series.setData(candles)
-  if (chart) chart.timeScale().fitContent()
+  if (chart) {
+    // 默认只显示最后 200 根（避免 candle 太密不可见）
+    // 用户可拖动 / 滚轮缩放看更早数据
+    const totalBars = props.data.length
+    const showBars = Math.min(totalBars, 200)
+    chart.timeScale().setVisibleLogicalRange({
+      from: Math.max(0, totalBars - showBars),
+      to: totalBars - 1,
+    })
+  }
 }
 
 /** 'YYYY-MM-DD HH:MM:SS' → UTC seconds */
@@ -115,6 +124,7 @@ onBeforeUnmount(() => {
   </div>
   <div v-if="data.length > 0" class="debug-info">
     {{ data.length }} bars | {{ data[0]?.datetime?.slice(0, 10) }} ~ {{ data[data.length-1]?.datetime?.slice(0, 10) }}
+    <span class="hint-tip">｜ 💡 显示最近 200 根（拖动 / 滚轮缩放看更多）</span>
   </div>
 </template>
 
