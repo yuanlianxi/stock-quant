@@ -113,6 +113,9 @@ onBeforeUnmount(() => {
   <div ref="chartContainer" class="kline-chart" :style="{ height: height + 'px' }">
     <div v-if="data.length === 0" class="empty">暂无 K 线数据</div>
   </div>
+  <div v-if="data.length > 0" class="debug-info">
+    {{ data.length }} bars | {{ data[0]?.datetime?.slice(0, 10) }} ~ {{ data[data.length-1]?.datetime?.slice(0, 10) }}
+  </div>
 </template>
 
 <style scoped>
@@ -130,5 +133,11 @@ onBeforeUnmount(() => {
   justify-content: center;
   height: 100%;
   color: var(--muted);
+}
+.debug-info {
+  font-size: 10px;
+  color: var(--muted);
+  padding: 4px 6px;
+  font-family: monospace;
 }
 </style>
