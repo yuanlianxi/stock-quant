@@ -29,8 +29,8 @@ const lines = ref<{ stop_loss?: number; add?: number; take_profit?: number; warn
 const currentPrice = ref<number>(0)
 const loading = ref(false)
 const chartError = ref<string>('')
-const chartPeriod = ref<KLinePeriod>('15min')
-const chartDays = ref<number>(7)  // sq-0009-round-3 commit 6
+const chartPeriod = ref<KLinePeriod>('5min')  // sq-0009-round-5 hotfix3: 默认 5min 让 mixDaily 容易触发
+const chartDays = ref<number>(30)  // sq-0009-round-5 hotfix3: 默认 30 天 (>10) 让 mixDaily 触发
 
 const curSym = computed(() => market.curSym)
 
@@ -189,7 +189,9 @@ function fmtPrice(n?: number): string {
       <div class="col col-chart">
         <h4 class="col-title">
           K 线图
-          <span v-if="kline.source.value === 'cache'" class="src-tag src-cache">🟢 缓存</span>
+          <span v-if="kline.source.value === 'mix'" class="src-tag src-mix">🟡 mix (5min + daily 补缺)</span>
+          <span v-else-if="kline.source.value === 'daily'" class="src-tag src-daily">🟦 daily</span>
+          <span v-else-if="kline.source.value === 'cache'" class="src-tag src-cache">🟢 缓存</span>
           <span v-else-if="kline.source.value === 'resample'" class="src-tag src-resample">🟡 resample</span>
           <span v-else-if="kline.source.value === 'empty'" class="src-tag src-empty">⚪ 空</span>
         </h4>
@@ -318,6 +320,8 @@ function fmtPrice(n?: number): string {
 .src-cache { background: rgba(34,197,94,0.15); color: #22c55e; }
 .src-resample { background: rgba(234,179,8,0.15); color: #eab308; }
 .src-empty { background: rgba(156,163,175,0.15); color: #9ca3af; }
+.src-mix { background: rgba(234,179,8,0.15); color: #eab308; }
+.src-daily { background: rgba(59,130,246,0.15); color: #3b82f6; }
 
 /* commit 8: 平铺 chip 按钮组 */
 .chip-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }

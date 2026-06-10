@@ -38,10 +38,10 @@ const backfillDays = computed(() => {
   return Math.max(0, Math.floor((b - a) / 86400_000) + 1)
 })
 
-// K 线图表单（Tab 5）—— commit 6 加 days 范围选择
+// K 线图表单（Tab 5）—— commit 6 加 days 范围选择 + hotfix3 默认值
 const klineSymbol = ref<string>('AG')
-const klinePeriod = ref<KLinePeriod>('15min')
-const klineDays = ref<number>(7)
+const klinePeriod = ref<KLinePeriod>('5min')  // hotfix3: 默认 5min
+const klineDays = ref<number>(30)  // hotfix3: 默认 30 天（>10 让 mixDaily 触发）
 const minutePeriods: KLinePeriod[] = ['5min', '15min', '30min', '60min']
 const isKlineMinutePeriod = computed(() => minutePeriods.includes(klinePeriod.value))
 const klineDaysOptions = computed(() => {
