@@ -216,7 +216,7 @@ function fmtPrice(n?: number): string {
             </button>
           </div>
         </div>
-        <KLineChart :data="kline.data.value" :height="500" />
+        <KLineChart :data="kline.data.value" :signals="signals" :height="500" />
       </div>
 
       <!-- 中：持仓 + Session -->

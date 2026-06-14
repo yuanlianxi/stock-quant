@@ -1,6 +1,7 @@
 <!--
   KLineChart.vue（v1.7+sq-0009-round-2 commit 1）
   lightweight-charts 4.1 封装：接收 KLineBar[] 渲染 K 线
+  v0.18.15 data-model Phase 2 hotfix：补 0005 原始需求 §1 — K 线图叠加信号 markers
 -->
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
@@ -15,11 +16,23 @@ export interface KLineBar {
   volume: number
 }
 
+export interface TurtleSignal {
+  signal_type: string       // 'entry_long' | 'entry_short' | 'exit_long' | 'exit_short' | 'add_unit'
+  trigger_price?: number
+  reference_price?: number
+  bar_time?: string         // 'YYYY-MM-DD HH:MM:SS'（与 KLineBar.datetime 对齐）
+  basis_55d?: number
+  reference_n?: number
+  [k: string]: any
+}
+
 const props = withDefaults(defineProps<{
   data: KLineBar[]
+  signals?: TurtleSignal[]
   height?: number
 }>(), {
   height: 400,
+  signals: () => [] as TurtleSignal[],
 })
 
 const chartContainer = ref<HTMLDivElement | null>(null)
@@ -94,10 +107,65 @@ function toUTCTimestamp(dt: string): number {
   return Math.floor(new Date(iso).getTime() / 1000)
 }
 
+/** 信号 → lightweight-charts marker 颜色 / 形状 / 位置 映射（0005 §1 5 种信号） */
+function markerStyleFor(signalType: string): {
+  color: string
+  shape: 'arrowUp' | 'arrowDown' | 'circle' | 'square'
+  position: 'aboveBar' | 'belowBar' | 'inBar'
+  text: string
+} {
+  switch (signalType) {
+    case 'entry_long':  return { color: '#22c55e', shape: 'arrowUp',   position: 'belowBar', text: '做多' }
+    case 'entry_short': return { color: '#ef4444', shape: 'arrowDown', position: 'aboveBar', text: '做空' }
+    case 'exit_long':   return { color: '#f97316', shape: 'arrowDown', position: 'aboveBar', text: '平多' }
+    case 'exit_short':  return { color: '#f97316', shape: 'arrowUp',   position: 'belowBar', text: '平空' }
+    case 'add_unit':    return { color: '#3b82f6', shape: 'circle',    position: 'inBar',    text: '加' }
+    default:            return { color: '#6b7280', shape: 'circle',    position: 'inBar',    text: '?' }
+  }
+}
+
+/** 把 props.signals 转换成 lightweight-charts markers 并 setMarkers */
+function updateMarkers() {
+  if (!series) return
+  if (!props.signals || props.signals.length === 0) {
+    // 清空 markers
+    series.setMarkers([])
+    return
+  }
+
+  // 过滤有 bar_time 的 signal + 转 lightweight-charts 格式
+  const markers = props.signals
+    .filter(s => s.bar_time && s.signal_type)
+    .map(s => {
+      const style = markerStyleFor(s.signal_type)
+      return {
+        // lightweight-charts v4 接受 string 格式 'YYYY-MM-DD HH:MM:SS'，内部解析
+        time: s.bar_time as any,
+        position: style.position,
+        color: style.color,
+        shape: style.shape,
+        text: style.text
+      }
+    })
+    .sort((a, b) => {
+      // 按时间排序（lightweight-charts 要求 markers 按时间升序）
+      const ta = typeof a.time === 'string' ? new Date(a.time).getTime() : a.time
+      const tb = typeof b.time === 'string' ? new Date(b.time).getTime() : b.time
+      return ta - tb
+    })
+
+  try {
+    series.setMarkers(markers as any)
+  } catch (e) {
+    console.warn('[KLineChart] setMarkers 失败（可能是 bar_time 与 K 线时间不匹配）:', e)
+  }
+}
+
 onMounted(async () => {
   await nextTick()
   initChart()
   updateData()
+  updateMarkers()  // v0.18.15: 初始加载信号 markers
   // 响应式宽度
   if (chartContainer.value) {
     const ro = new ResizeObserver(entries => {
@@ -110,6 +178,7 @@ onMounted(async () => {
 })
 
 watch(() => props.data, () => updateData(), { deep: true })
+watch(() => props.signals, () => updateMarkers(), { deep: true })
 
 onBeforeUnmount(() => {
   if (chart) {
