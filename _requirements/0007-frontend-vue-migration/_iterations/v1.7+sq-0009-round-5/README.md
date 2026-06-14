@@ -7,12 +7,32 @@
 > 1. 行情 K 线只支持分时周期（5/15/30/60min），无 daily 选项
 > 2. 查询时间范围 >10 天时（akshare 5min 窗口外），缺数据没法看
 
-## 状态汇总（2 commit 计划）
+## 状态汇总（最终）
 
 | 阶段 | 状态 | 进度 | 备注 |
 |------|------|------|------|
-| commit 11: K 线加 daily 周期 | 🔄 进行中 | 0% | useKLineData + SymbolDetail + MarketDataSync |
-| commit 12: 混合展示 | ⏳ 待开始 | 0% | 分时 + 日线自动补缺 |
+| commit 11: K 线加 daily 周期 | ✅ 完成 | 100% | useKLineData + SymbolDetail + MarketDataSync |
+| commit 12: 混合展示 | ✅ 完成 | 100% | 分时 + 日线自动补缺 |
+| hotfix1-12: K 线日线渲染 / 维度对齐 / OHLC 还原 | ✅ 完成 | 100% | hotfix6 5min/daily 时间宽度 + hotfix8 OHLC 线性插值（后回滚）+ hotfix12 过滤 minute 已有的日期 |
+| **最终验收** | ✅ **closed**（2026-06-14）| — | 用户浏览器实测：K 线 23:30 段不再"等高全红" → 验收通过 |
+
+## 最终交付
+
+| Commit | 内容 | 涉及文件 |
+|--------|------|----------|
+| ae31f3c | feat(webapp): K 线日线支持 + 混合展示（合并 commit 11/12） | webapp/src/composables/useKLineData.ts + SymbolDetail.vue + MarketDataSync.vue |
+| 4791c45 | fix: mixDaily daily 拉取范围 bug | useKLineData.ts |
+| 9d3f323 | fix: mixDaily 智能补缺 | useKLineData.ts |
+| 6f4e85b | fix: 默认值让 mixDaily 触发 | useKLineData.ts |
+| 53f4476 | fix: KLineChart 加 debug 显示 | KLineChart.vue |
+| 914d110 | fix: K 线默认显示最近 200 根 | useKLineData.ts |
+| fec100d | fix: daily 拆 30 根 5min 占 1 天宽度 | useKLineData.ts |
+| cff80eb | fix: daily datetime UTC 时区错位 | useKLineData.ts |
+| f6ddb8b | fix: daily 30 根 OHLC 线性插值（后回滚）| useKLineData.ts |
+| 7f26876 | fix: 调整回 hotfix6 datetime + 保留 hotfix8 OHLC | useKLineData.ts |
+| a1320c0 | fix: 撤销 hotfix8 OHLC 线性插值 | useKLineData.ts |
+| 3027335 | fix: 回滚到 hotfix6 原始设计 | useKLineData.ts |
+| **eeb163c** | **fix: daily 过滤 minute 已有的日期（hotfix12）** | **useKLineData.ts** |
 
 ## 2 拆 commit 范围
 

@@ -34,7 +34,13 @@ curl http://localhost:8000/health  # 验证：{"status":"healthy"}
 
 **端口**：`8000`  
 **健康检查**：`GET /health` → `{"status":"healthy"}`  
-**根路径**：`GET /` → 实际返回 `www_legacy_v1.5/index.html` HTML（FileResponse fallback），新版前端在 `http://localhost:5173`（Vite 开发模式）；`{"message":"Stock Quant API","version":"1.5"}` 仅作为 FastAPI 启动示例
+**根路径**（v0.18.12 起，0007 D 联调完工）：
+- `GET /` → **新版 webapp**（`webapp/dist/index.html`，Vue 3 生产构建）
+- `GET /legacy/` → 老版 v1.5 归档（`www_legacy_v1.5/index.html`，灰度对照）
+- `GET /assets/*` → webapp 静态资源
+- `GET /signals/*` `/docs` `/openapi.json` 等 → FastAPI 9 域 router（54 端点）
+- `GET /<任意 UI 路径>` → SPA fallback 到新版 index.html
+- Vite dev 模式：访问 `http://localhost:5173`（HMR 热更新）
 
 ### 启动前端（Vue 3 + Vite）
 
