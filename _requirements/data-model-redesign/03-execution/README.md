@@ -73,7 +73,7 @@
 
 | Phase | 名称 | 工作日 | 派发状态 |
 |------|------|--------|---------|
-| 2 | 策略领域 | 3 | ⏳ 待派 |
+| **2** | **策略领域** | 🔄 **部分完成** | **v0.18.14 收尾** |
 | 3 | 交易 / 账户领域 | 10-12 | ⏳ 待派 |
 | 4 | 回测持久化 | 3 | ⏳ 待派 |
 | 5 | 账户中心页 | 2 | ⏳ 待派 |
@@ -83,11 +83,41 @@
 
 ---
 
-## 负责人
+## Phase 2 收尾（v0.18.14，2026-06-14）
 
-- **Phase 1 实施**：Blex（走 sq-0009 流程）
+### 实施内容
+
+| 任务 | 实际 |
+|------|------|
+| 后端 1 端点 | ✅ `GET /strategies/{strategy_id}/trade-process`（strategy.py 8→9 端点）|
+| 前端 TopBar.vue | ✅ 新建 157 行（5 Tab + 策略/账户下拉 + 4 操作 + 2 入口）|
+| 前端 App.vue 集成 | ✅ 5 Tab 切换 + 模拟 Tab = MarketGrid + SymbolDetail + 4 placeholder Tab |
+| 6 项 curl 验证 | ✅ 全过 |
+
+### 与 plan §二 Phase 2 范围对比
+
+| Plan 项 | 实际 |
+|------|------|
+| 6 张表 | ✅ 5 张实表（strategy_signal_states v1.3 已删）+ 1 张已删 |
+| 7 个 API | ⚠️ 9 个端点（plan 列 7 个 + bonus `param-history` + `events`），含新 `trade-process` |
+| 顶部策略下拉 | ✅ TopBar.vue 实现（连 useStrategyStore）|
+| 策略历史页 | ⚠️ 占位（Phase 3 trade_sessions 没建，StrategyHistoryPanel 需 strategyId prop）|
+| V1/V2 隔离 | ⚠️ V1 就绪（V1/strategy.py + loader.py）/ V2 未实现 |
+| V1 position.py 迁移 | ❌ 不做（4 个 active 文件引用 PositionManager，需保留兼容）|
+
+### 缺口（留待 Phase 3 或单独 hotfix）
+
+- ❌ V2 策略实现（`strategies/turtle/V2/strategy.py`）
+- ❌ 4 placeholder Tab 替换为真实 view
+- ❌ `StrategyHistoryPanel` / `TradeProcessTimeline` 真实数据接入（需 Phase 3 trade_sessions）
+- ❌ trade-process 端点切换为 JOIN strategy_id 严格过滤（需 Phase 3）
+
+### 负责人
+
+- **Phase 1 实施**：Blex（走 sq-0009 流程，2026-06-07）
+- **Phase 2 收尾**：Blex（v0.18.14，2026-06-14）
 - **Phase 2-6 派发**：（待用户拍板）
 
 ---
 
-*本文档 2026-06-14 补充 Phase 1 实际执行记录。Phase 2-6 仍按 02-plan/plan.md 执行。*
+*本文档 2026-06-14 补充 Phase 1 + Phase 2 收尾实际执行记录。Phase 3-6 仍按 02-plan/plan.md 执行。*

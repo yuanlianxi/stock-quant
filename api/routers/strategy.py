@@ -301,3 +301,55 @@ async def get_strategy_events(strategy_id: str, days: int = 30, limit: int = 100
             r['context'] = {}
 
     return {"strategy_id": strategy_id, "days": days, "count": len(rows), "events": rows}
+
+
+# ============================================================
+# v0.18.14 data-model Phase 2 收尾：v1.5 trade-process 端点
+# ============================================================
+# 注意：当前 schema 下 turtle_trade_process 表无 strategy_id 字段（trade_sessions 表
+# 是 Phase 3 才建）。务实实现：按 account_id 过滤；Phase 3 实施后会自动 JOIN
+# trade_sessions.strategy_id 严格过滤。
+
+@router.get("/strategies/{strategy_id}/trade-process")
+async def get_trade_process(strategy_id: str, account_id: str = None, limit: int = 100):
+    """
+    v1.5 过程数据（最近 N 条）
+    GET /strategies/turtle_v1/trade-process?account_id=sim_default&limit=50
+
+    返回：{
+        "strategy_id": "turtle_v1",
+        "account_id": "sim_default",  # 可选
+        "count": N,
+        "records": [
+            {"id": ..., "session_id": ..., "event_type": ..., "bar_time": ..., ...},
+            ...
+        ]
+    }
+
+    注：当前 Phase 1 schema 不含 trade_sessions 表，无法严格按 strategy_id 过滤。
+    Phase 3 实施 trade_sessions 后，切换为 JOIN trade_sessions.strategy_id 过滤。
+    """
+    import sqlite3
+    conn = sqlite3.connect('data/futures_akshare.db')
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    if account_id:
+        cur.execute("""
+            SELECT * FROM turtle_trade_process
+            WHERE account_id = ?
+            ORDER BY bar_time DESC LIMIT ?
+        """, (account_id, limit))
+    else:
+        cur.execute("""
+            SELECT * FROM turtle_trade_process
+            ORDER BY bar_time DESC LIMIT ?
+        """, (limit,))
+    rows = [dict(row) for row in cur.fetchall()]
+    conn.close()
+    return {
+        "strategy_id": strategy_id,
+        "account_id": account_id,
+        "count": len(rows),
+        "phase3_note": "Phase 3 trade_sessions 实施后切换为 JOIN strategy_id 过滤",
+        "records": rows
+    }
