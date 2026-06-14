@@ -321,16 +321,27 @@
 | Blex（主 agent）| 派子任务 + 协调 + 文档维护 | 全程 |
 | Blex（子 agent）| 实施编码 + 单测 + 集成 | 按 Phase 派 |
 
-**工具**：
+**工具**（v0.18.13 实际状态）：
 - 数据库：SQLite（主）/ PostgreSQL（备份）
-- 后端：FastAPI + uvicorn
-- 前端：原生 HTML + JS（v1.3 简化）+ 后续可换 Vue
+- 后端：FastAPI + uvicorn（v1.7+sq-0008 已拆 9 域 router，main.py 1848→80 行）
+- **前端**：**Vue 3 + Vite 5 + TypeScript + Pinia 2.1 模块化项目**（v0.18.12 完工，0007 v1.6 D+E）
+  - 路径：`webapp/`（已替代 `www/index.html` 单文件 2120 行）
+  - dev: `npm run dev`（HMR 热更新，5173 端口）
+  - build: `npm run build` → `webapp/dist/`（D 联调后由 FastAPI 静态托管在 :8000/）
+  - 老版 `www_legacy_v1.5/` 归档保留，访问 `/legacy/` 对照
 - 测试：pytest + locust
 
 **环境**：
-- 开发：http://localhost:8000
+- 开发：http://localhost:8000（新版 webapp + 9 域 API 54 端点）
+- dev-only：:5173（Vite HMR）
 - 测试：独立 test DB
-- 生产：暂不部署（v0.8.5 当前已用）
+- 生产：暂不部署（v0.18.13 当前已用）
+
+**v0.18.13 节点关键变化**（原 plan 描述已落后）：
+- ❌ "前端：原生 HTML + JS" → ✅ Vue 3 + Vite 模块化
+- ❌ "main.py 1848 行" → ✅ 9 域 router（v1.7+sq-0008）
+- ❌ "v0.8.5 当前已用" → ✅ v0.18.13（v0.18.10~v0.18.13 + 4 hotfix）
+- 影响 Phase 3-5 工作量：前端 4 模态框 / 5 Tab / K 线图集成价格线——容器已就绪（`webapp/src/modals/` 6 文件 + `views/` 12 文件 + `components/KLineChart.vue`），预计**省 30-50% 工作量**
 
 ---
 
@@ -373,12 +384,16 @@
 | 4 文档填实 | ✅ 01/02/03/04 已完成 |
 | 05-project-structure | ✅ 已完成 |
 | Phase 拆分 | ✅ 7 个 Phase 明确 |
-| 时间线 | ✅ 23-27 工作日 / 5-6 周 |
+| 时间线 | ✅ 23-27 工作日 / 5-6 周（**但 Phase 1 已实施，省 3-4 天**）|
 | 风险与回退 | ✅ 9 风险 + 4 回退 |
 | 待确认项 | ⏳ 18 项（18 项已采纳默认）|
 | 资源分配 | ✅ 已规划 |
 | 验收标准 | ✅ 每 Phase 明确 |
-| 用户审核 | ⏳ **本文档待用户拍板** |
+| **Phase 1 合约行情** | ✅ **已实质完成**（2026-06-07 实施，4 张表 + 5 API + 主力识别 + retention 3 年/半年 + 合约抽屉 + 角标）|
+| **Phase 2-6 实施** | ⏳ **待派发**（Phase 1 实施时未走 plan 流程，需正式派发 Phase 2 起）|
+| 用户审核 | ⏳ **plan §八 工具栈已对齐 v0.18.13 现实**；Phase 2-6 待用户拍板是否派发 |
+
+> **重要补充**（v0.18.13 复盘）：Phase 1 实际于 **2026-06-07 实施**（`data/data_loader.py.bak.20260607-pre-p1` 留底），但**走的是 sq-0009 缓存层流程而非 data-model plan 流程**——所以 `_requirements/data-model-redesign/02-plan/plan.md` 状态没及时回写。**Phase 1 的 15 项验收点 100% 落地**（见 §一 实际盘点），后续 Phase 2-6 仍按本 plan 执行。
 
 ---
 
