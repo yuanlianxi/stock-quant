@@ -14,6 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi import HTTPException
 
 from strategies.turtle.position import PositionManager
 
@@ -71,16 +72,45 @@ position_manager = PositionManager()
 # ============================================================
 
 WWW_DIR = PROJECT_ROOT / "www_legacy_v1.5"
-app.mount("/www_legacy_v1.5", StaticFiles(directory=str(WWW_DIR), html=True), name="www_legacy_v1.5")
+WEBAPP_DIST = PROJECT_ROOT / "webapp" / "dist"
+WEBAPP_INDEX = WEBAPP_DIST / "index.html"
+WEBAPP_ASSETS = WEBAPP_DIST / "assets"
 
+# 旧版 v1.5 挂到 /legacy（保留作为灰度对照）
+app.mount("/legacy", StaticFiles(directory=str(WWW_DIR), html=True), name="legacy")
+
+# 新版 webapp 静态资源（CSS / JS / favicon 等）
+if WEBAPP_ASSETS.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(WEBAPP_ASSETS)), name="webapp-assets")
+
+# 根路径 → 新版 webapp index.html
 @app.get("/")
 async def root():
-    """主页看板"""
+    """主页看板（v1.6 新版 webapp）"""
+    if WEBAPP_INDEX.is_file():
+        return FileResponse(str(WEBAPP_INDEX))
+    # 新版未构建时降级到旧版，避免服务不可用
     return FileResponse(str(WWW_DIR / "index.html"))
 
+# 健康检查（必须在 SPA fallback 之前定义，否则被 /{full_path:path} 抢走）
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+# SPA fallback：所有未匹配的 UI 路径都返回新版 index.html（Vue 接管）
+_SPA_EXCLUDED_PREFIXES = (
+    "api", "assets", "legacy", "docs", "openapi.json", "redoc"
+)
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """v1.6 SPA fallback：让 Vue 接管前端路由"""
+    first = full_path.split("/", 1)[0]
+    if first in _SPA_EXCLUDED_PREFIXES:
+        raise HTTPException(status_code=404, detail="Not Found")
+    if WEBAPP_INDEX.is_file():
+        return FileResponse(str(WEBAPP_INDEX))
+    raise HTTPException(status_code=404, detail="webapp not built")
 
 
 # ============================================================

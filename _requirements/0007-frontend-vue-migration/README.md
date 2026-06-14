@@ -2,7 +2,7 @@
 
 > 创建：2026-06-03 23:21
 > 设计文档：`0007_前端模块化重构设计.md` v0.1.0（已批准）
-> 状态：🚀 Phase A 派发中
+> 状态：✅ v1.6 完工（D 联调 + E 切版 2026-06-14 完成）
 
 ## 子任务清单
 
@@ -10,10 +10,10 @@
 |-------|-----------|------|---------|------|------|
 | A | `sq-0007-a-scaffold` | 脚手架（Vite + Vue 3 + TS + Pinia） | 23:21 | ✅ 完成（2m13s） | 30 分钟 |
 | B | `sq-0007-b-basics` | 基础能力（useApi/Toast/Modal/5 store/8 services） | 23:24 | ✅ 完成（2m） | 60 分钟 |
-| C1 | `sq-0007-c1-views` | 11 个视图组件 | 待 B 完成 | 🚀 派发中 | 90 分钟 |
-| C2 | `sq-0007-c2-modals` | 5 个手动交易模态框 + ActionModalHost | 待 C1 完成 | ⏳ 待派 | 30 分钟 |
-| D | `sq-0007-d-integrate` | 联调灰度（FastAPI 挂载 + 并行新旧版） | 待 C2 完成 | ⏳ 待派 | 60 分钟 |
-| E | `sq-0007-e-cutover` | 切换清理（旧版归档 + 飞书同步） | 待 D 完成 | ⏳ 待派 | 30 分钟 |
+| C1 | `sq-0007-c1-views` | 11 个视图组件 | 6/3-6/8 | ✅ 完成（12 视图/组件） | 90 分钟 |
+| C2 | `sq-0007-c2-modals` | 5 个手动交易模态框 + ActionModalHost | 6/8-6/10 | ✅ 完成（6 modals + ActionModalHost + AccountCenterModal） | 30 分钟 |
+| D | `sq-0007-d-integrate` | 联调灰度（FastAPI 挂载 + 并行新旧版） | 6/14 | ✅ 完成（webapp dist + /legacy + SPA fallback） | 60 分钟 |
+| E | `sq-0007-e-cutover` | 切换清理（旧版归档 + 飞书同步） | 6/14 | ✅ 完成（www/ → www_legacy_v1.5/，D 阶段联调通过） | 30 分钟 |
 
 ## 派发规范
 
@@ -31,6 +31,9 @@
 - 2026-06-03 23:24：派发 Phase B（基础能力：composables + 5 store + 8 services + 3 基础组件）
 - 2026-06-03 23:26：Phase B 完成（25 个文件 / vue-tsc 0 错 / signals=33 / symbols=49）
 - 2026-06-03 23:27：派发 Phase C1（11 个 view 视图组件）
+- 2026-06-08 ~ 06-10：C1（12 视图/组件）+ C2（6 modals + ActionModalHost + AccountCenterModal）实质完成
+- 2026-06-14：D 联调（`api/main.py` 挂载 webapp dist + /legacy + SPA fallback）+ E 切版（`www/index.html` 删 / `www_legacy_v1.5/` 归档）完工
+- 2026-06-14：6 项 curl 验证全过（`/` / `/legacy/` / `/health` / `/symbol-detail` SPA / `/docs` / `/assets/xxx.js`）
 
 ---
 
