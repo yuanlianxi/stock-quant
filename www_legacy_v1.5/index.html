@@ -2000,7 +2000,8 @@ async function drawUnitDetail() {
           <div class="unit-row"><span class="lbl">状态</span><span class="val">${e.exec_status || '--'}</span></div>
           <div class="unit-row"><span class="lbl">hand</span><span class="val">${e.exec_hand_count || '--'}</span></div>
           ${e.is_gap === 1 ? '<div class="gap-badge">跳空跳过 ⚠️</div>' : ''}
-        ` : '<div class="unit-row" style="color: var(--muted);">未建仓</div>'};
+        ` : '<div class="unit-row" style="color: var(--muted);">未建仓</div>'}
+      `;
       unitGrid.appendChild(card);
     }
     document.getElementById('unitDetailPanel').style.display = 'block';

@@ -1,11 +1,11 @@
-# Stock Quant - 期货量化交易系统 v1.5
+# Stock Quant - 期货量化交易系统 v1.6
 
 > 数据驱动的期货策略回测 / 模拟交易 / 监控一体化平台
 
 | 项目 | 值 |
 |------|---|
 | **项目名称** | Stock Quant |
-| **当前版本** | v1.5 |
+| **当前版本** | v1.6 |
 | **项目路径** | `~/.openclaw/workspace/projects/stock-quant/` |
 | **仓库** | Gitee + GitHub 双端同步 |
 | **飞书根节点** | 股票量化 (`CAmhwOvBLiXhaUkVidccCluDnxg`) |
@@ -34,23 +34,29 @@ curl http://localhost:8000/health  # 验证：{"status":"healthy"}
 
 **端口**：`8000`  
 **健康检查**：`GET /health` → `{"status":"healthy"}`  
-**根路径**：`GET /` → `{"message":"Stock Quant API","version":"1.5"}`
+**根路径**：`GET /` → 实际返回 `www_legacy_v1.5/index.html` HTML（FileResponse fallback），新版前端在 `http://localhost:5173`（Vite 开发模式）；`{"message":"Stock Quant API","version":"1.5"}` 仅作为 FastAPI 启动示例
 
-### 启动前端
+### 启动前端（Vue 3 + Vite）
 
 ```bash
-# 前端是单文件 index.html（不需要 build）
-# 方式 1：直接用浏览器打开
-#   open www/index.html
+# 首次启动：安装依赖
+cd /home/yuan/.openclaw/workspace/projects/stock-quant/webapp
+npm install
 
-# 方式 2：用 HTTP 服务器（推荐）
-cd www
-python3 -m http.server 8080
-# 访问 http://localhost:8080
+# 启动开发服务器（含 HMR 热更新）
+npm run dev
+# 访问 http://localhost:5173
+
+# 类型检查
+npm run type-check
+
+# 生产构建
+npm run build
+# 输出到 webapp/dist/，可部署到任意静态服务器
 ```
 
-**前端端口**：`8080`  
-**入口文件**：`www/index.html`（2119 行，单文件包含 HTML+CSS+JS）
+**前端端口**：`5173`（Vite 默认，Vite 配置文件中 `server.host='0.0.0.0'`，可通过代理 `/api/v1` → `http://localhost:8000` 解决跨域）  
+**入口目录**：`webapp/`（Vue 3 + Pinia + Vite + TypeScript；Vite 开发模式入口 `webapp/index.html` + `webapp/src/main.ts`；生产构建产物 `webapp/dist/index.html`）
 
 ### 跑测试
 
@@ -68,7 +74,7 @@ pytest tests/ --cov=api.services --cov=strategies  # 覆盖率
 | 2. 初始化 DB | `python3 -c "from data.data_loader import init_db; init_db()"` | 22 张表创建 |
 | 3. 启动 API | `nohup python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --log-level warning > /tmp/uvicorn.log 2>&1 &` | 后台进程 |
 | 4. 健康检查 | `curl http://localhost:8000/health` | `{"status":"healthy"}` |
-| 5. 启动前端 | `cd www && python3 -m http.server 8080` | 浏览器访问 8080 |
+| 5. 启动前端 | `cd webapp && npm install && npm run dev` | 浏览器访问 5173 |
 | 6. 跑测试 | `pytest tests/ -v` | 82/82 通过 |
 
 ---
@@ -80,7 +86,7 @@ pytest tests/ --cov=api.services --cov=strategies  # 覆盖率
 | **数据层** | `data/data_loader.py` | 22 张表 + 5 FK + 7 索引 + init_db | `from data.data_loader import init_db, get_futures_daily` | 2228 行 |
 | **API 层** | `api/main.py` + `api/routers/` | 9 域 44 端点 + 根 2 端点（sq-0008 拆分） | http://localhost:8000/docs（Swagger 自动生成） | main 80 行 / routers 1599 行 |
 | **策略层** | `strategies/` | turtle V1 海龟系统 + loader + executor + trade_process_logger | `from strategies.loader import get_strategy` | base / loader / executor / trade_process_logger / turtle/ |
-| **前端层** | `www/index.html` | 4 模态 + 顶部操作 + 8 汇总卡片 + K 线图 + 4 Unit + 价格线 + 时间线 | http://localhost:8080/ | 2119 行 |
+| **前端层** | `webapp/` | Vue 3 + Pinia + Vite + TypeScript（11 views + 6 modals + 5 stores + 8 services + 4 composables + 3 components） | http://localhost:5173/ | webapp/ 完整结构（见下） |
 
 ### 数据层详情
 
@@ -115,10 +121,66 @@ pytest tests/ --cov=api.services --cov=strategies  # 覆盖率
 
 ### 前端层详情
 
-- **单文件**：`www/index.html`（HTML + CSS + JS 全栈）
-- **4 个模态框**：建仓 / 加仓 / 减仓 / 全部平仓
-- **8 个汇总卡片**：余额 / 可用 / 持仓 / 浮动盈亏 / 已实现 / Open Sessions / Open Units / 近 N 天成交
-- **4 Unit 详情面板**：每个 session 显示 4 个 unit 卡片
+- **框架**：Vue 3.4（Composition API + `<script setup>`）+ Pinia 2.1 + Vite 5.2 + TypeScript 5.4
+- **图表**：lightweight-charts 4.1（K 线图）
+- **完整结构**（sq-0007 重构后）：
+
+```
+webapp/src/
+├── App.vue                        # 根组件
+├── main.ts                        # 启动文件（注册 Pinia + 路由）
+├── vite-env.d.ts
+├── assets/                        # 静态资源
+├── components/                    # 通用组件（3 个）
+│   ├── Modal.vue
+│   ├── StatusBadge.vue
+│   └── ToastHost.vue
+├── composables/                   # 组合式函数（4 个）
+│   ├── useApi.ts
+│   ├── useModal.ts
+│   ├── usePolling.ts
+│   └── useToast.ts
+├── config/                        # 配置（2 个）
+│   ├── colors.ts
+│   └── symbols.ts
+├── modals/                        # 业务模态框（6 个）
+│   ├── ReduceUnitModal.vue
+│   ├── OpenSessionModal.vue
+│   ├── CloseAllModal.vue
+│   ├── SessionFormField.vue
+│   ├── LineOverrideModal.vue
+│   └── AddUnitModal.vue
+├── services/                      # API 客户端（8 个）
+│   ├── account.ts
+│   ├── backtest.ts
+│   ├── cache.ts
+│   ├── contracts.ts
+│   ├── market.ts
+│   ├── position.ts
+│   ├── session.ts
+│   └── strategy.ts
+├── stores/                        # Pinia 状态（5 个）
+│   ├── account.ts
+│   ├── chart.ts
+│   ├── market.ts
+│   ├── session.ts
+│   └── strategy.ts
+└── views/                         # 视图层（11 个）
+    ├── ContractDrawer.vue
+    ├── SymbolDetail.vue
+    ├── PriceLineBar.vue
+    ├── MarketGrid.vue
+    ├── TradeProcessTimeline.vue
+    ├── BacktestPanel.vue
+    ├── ActionModalHost.vue
+    ├── SignalTimeline.vue
+    ├── AccountCenterModal.vue
+    ├── UnitDetail.vue
+    └── StrategyHistoryPanel.vue
+```
+
+- **6 个业务模态框**：建仓 / 加仓 / 减仓 / 全部平仓 / 调价 / Session 表单字段
+- **8 张汇总卡片**：余额 / 可用 / 持仓 / 浮动盈亏 / 已实现 / Open Sessions / Open Units / 近 N 天成交
 - **跳空标志**：跳空（is_gap=1）的 unit 显示 ⚠️ 金色边
 - **价格线**：调价 3 色线（红止损 / 蓝加仓 / 紫 20日反向）
 - **时间线**：订单 / 信号 / 调价事件时间线
@@ -130,7 +192,9 @@ pytest tests/ --cov=api.services --cov=strategies  # 覆盖率
 
 ### 主界面（K 线图 + 品种网格）
 
-- 访问 `www/index.html`
+- 访问 `http://localhost:5173`（Vite 开发模式，推荐）
+- 生产部署：访问 `webapp/dist/index.html`（先 `npm run build`）
+- 旧版主页：`http://localhost:8000/`（FileResponse fallback 到 `www_legacy_v1.5/index.html`，仅作兼容）
 - 默认显示合约/品种行情
 - 点击品种卡片看详情
 - 顶部"📊 账户中心"按钮看汇总
@@ -328,7 +392,7 @@ http://localhost:8000/redoc   # ReDoc 风格
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/` | 主页（FileResponse → `www/index.html`） |
+| GET | `/` | 主页（FileResponse → `www_legacy_v1.5/index.html`，新版前端在 5173） |
 | GET | `/health` | 健康检查 |
 
 **端点总数**：2+1+2+5+6+5+6+9+8+2 = **46**（44 router 端点 + 2 根端点）
@@ -443,9 +507,9 @@ pytest tests/ --cov=api.services --cov=strategies  # 覆盖率
 
 ### 前端无法连接 API
 
-- **CORS 错误**：API 默认允许所有源（如有限制需调整 `api/main.py`）
-- **端口不对**：API 在 8000，前端在 8080（默认配置可改）
-- **健康检查失败**：先 `curl http://localhost:8000/health` 验证 API 在线
+- **CORS 错误**：开发时 Vite 已代理 `/api/v1` → `http://localhost:8000`（见 `webapp/vite.config.ts`），生产环境部署跨域需在 Nginx/网关层处理
+- **端口不对**：API 在 8000，前端 Vite 默认在 5173（与旧版 8080 不同），可通过 `webapp/vite.config.ts` 的 `server.port` 调整
+- **健康检查失败**：先 `curl http://localhost:8000/health` 验证 API 在线，再检查 Vite dev server 终端输出是否有代理错误
 
 ### 飞书同步失败
 
@@ -513,8 +577,26 @@ stock-quant/
 │       ├── factors.py
 │       ├── position.py
 │       └── V1/            # 海龟 V1 实现
-├── www/                    # 前端层
-│   └── index.html         # 单文件前端（2119 行）
+├── webapp/                 # 前端层（Vue 3 + Pinia + Vite + TypeScript，sq-0007 重构）
+│   ├── index.html         # Vite 入口
+│   ├── package.json       # 依赖（vue / pinia / vite / typescript / lightweight-charts）
+│   ├── vite.config.ts     # Vite 配置（端口 5173 + 代理 /api/v1 → 8000）
+│   ├── tsconfig.json      # TypeScript 配置
+│   ├── dist/              # 生产构建产物（npm run build）
+│   ├── node_modules/      # npm install 安装（git ignore）
+│   └── src/               # 源代码
+│       ├── App.vue
+│       ├── main.ts
+│       ├── assets/
+│       ├── components/    # 3 通用组件
+│       ├── composables/   # 4 组合式函数
+│       ├── config/        # 2 配置
+│       ├── modals/        # 6 业务模态框
+│       ├── services/      # 8 API 客户端
+│       ├── stores/        # 5 Pinia stores
+│       └── views/         # 11 视图
+├── www_legacy_v1.5/        # ⚠️ DEPRECATED：v1.5 单文件前端（2120 行）
+│   └── index.html         # 仅作为 API GET / 的 FileResponse fallback，不再维护
 ├── tests/                  # 测试
 │   ├── test_sim_engine.py
 │   ├── test_strategy_loader.py
@@ -545,14 +627,14 @@ stock-quant/
 
 ---
 
-## 📊 关键指标（v1.5 完工态）
+## 📊 关键指标（v1.6 完工态）
 
 | 维度 | 指标 |
 |------|------|
 | 数据 | 22 张表 / 5 FK / 7 索引 |
 | API | 46 端点（9 router / 44 + 根 2，sq-0008 拆分后）|
 | 策略 | 海龟 V1 + 通用基类 |
-| 前端 | 2119 行（4 模态 + 8 卡片 + 4 Unit + 调价线） |
+| 前端 | webapp/ 完整结构（11 views + 6 modals + 5 stores + 8 services + 4 composables + 3 components + 2 config，Vue 3 + Pinia + Vite + TS）；旧 www/ 保留为 www_legacy_v1.5/（2120 行单文件）作 fallback |
 | 测试 | 82 用例 / 53% 覆盖 / 5 服务层 71.6% 平均 |
 | 性能 | 100 session 0.84s / 20.52 RPS / 0 失败 |
 | 文档 | 6 大核心 + 5 阶段过程 + README.md（本文件） |
@@ -575,7 +657,7 @@ stock-quant/
 
 ## 📜 License
 
-Internal use only（v1.5 阶段）
+Internal use only（v1.6 阶段）
 
 ---
 
