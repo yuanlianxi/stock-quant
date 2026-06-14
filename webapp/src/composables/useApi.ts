@@ -1,4 +1,8 @@
-const BASE_URL = import.meta.env.VITE_API_BASE ?? '/api/v1'
+// v0.18.12-hotfix1: DEV 模式走 vite proxy（/api/v1），PROD 模式同源直连
+// - Dev（:5173）：BASE_URL='/api/v1' → vite.config.ts proxy 转发去前缀
+// - Prod（:8000）：BASE_URL='' → /signals/all 等直打 FastAPI router
+const BASE_URL = import.meta.env.VITE_API_BASE
+  ?? (import.meta.env.DEV ? '/api/v1' : '')
 
 export class ApiError extends Error {
   constructor(public status: number, public detail: string, public path: string) {
