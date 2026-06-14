@@ -74,7 +74,9 @@ function updateData() {
     close: bar.close,
   }))
   series.setData(candles)
-  if (chart) {
+  // v0.18.12-hotfix2: 空数据守卫（fetch 还没返回时 props.data=[]）
+  // setVisibleLogicalRange({ from: 0, to: -1 }) 会触发 lightweight-charts 断言
+  if (chart && props.data.length > 0) {
     // 默认只显示最后 200 根（避免 candle 太密不可见）
     // 用户可拖动 / 滚轮缩放看更早数据
     const totalBars = props.data.length
