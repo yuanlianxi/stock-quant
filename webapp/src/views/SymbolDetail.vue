@@ -71,6 +71,12 @@ async function loadDetail(sym: string) {
   loading.value = true
   chartError.value = ''
   try {
+    // 0. v0.18.16: 自动 scan 触发（让 turtle_signals 表有数据，K 线图 markers 才能显示）
+    //    后台 fire-and-forget，不阻塞 UI；365 天窗口让历史信号都能找到
+    marketApi.turtleScanSymbol(sym, 365).catch((e) => {
+      console.warn(`[SymbolDetail] 后台 scan ${sym} 失败:`, e)
+    })
+
     // 1. signals
     const sigResp = await marketApi.signalsBySymbol(sym)
     const dir = sigResp.direction === 1 || sigResp.direction === 'long'

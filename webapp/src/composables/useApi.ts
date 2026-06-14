@@ -57,7 +57,7 @@ async function request<T>(method: string, path: string, opts: RequestOptions = {
 
 export const useApi = () => ({
   get:    <T>(p: string, params?: Record<string, any>) => request<T>('GET', p, { params }),
-  post:   <T>(p: string, body?: any) => request<T>('POST', p, { body }),
-  put:    <T>(p: string, body?: any) => request<T>('PUT', p, { body }),
+  post:   <T>(p: string, body?: any, opts?: { params?: Record<string, any> }) => request<T>('POST', p, { body, ...opts }),
+  put:    <T>(p: string, body?: any, opts?: { params?: Record<string, any> }) => request<T>('PUT', p, { body, ...opts }),
   delete: <T>(p: string) => request<T>('DELETE', p)
 })

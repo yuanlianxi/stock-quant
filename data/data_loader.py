@@ -1864,17 +1864,18 @@ def check_bar_signal(
     return signals
 
 
-def detect_signals_for_symbol(symbol: str, period: str = "5min") -> list[dict]:
+def detect_signals_for_symbol(symbol: str, period: str = "5min", days: int = 365) -> list[dict]:
     """
     对某品种近 N 天分钟数据全量扫描（用于历史回溯）
     每次只检测最后一根新 K 线，增量调用
+    days: 扫描窗口（v0.18.16 由 7 改默认 365，让历史信号都能找到）
     """
     levels = get_daily_ref_levels(symbol)
     if not levels:
         return []
 
     conn = get_conn()
-    cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     df = pd.read_sql(
         f"SELECT * FROM futures_min WHERE symbol='{symbol.upper()}' "
         f"AND period='{period}' AND datetime>='{cutoff} 00:00:00' ORDER BY datetime",

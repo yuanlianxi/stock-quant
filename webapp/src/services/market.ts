@@ -10,5 +10,8 @@ export const marketApi = {
   turtleSignalsActive: () => useApi().get<any[]>('/turtle/signals/active'),
   turtleSignalsAlerts: (sinceMinutes = 30) => useApi().get<any[]>('/turtle/signals/alerts', { since_minutes: sinceMinutes }),
   turtleSignalsBySymbol: (s: string, days = 7) => useApi().get<any[]>(`/turtle/signals/${s}`, { days }),
-  mainContract:      (s: string) => useApi().get<any>(`/main-contract/${s}`)
+  mainContract:      (s: string) => useApi().get<any>(`/main-contract/${s}`),
+  // v0.18.16: 暴露 scan 端点（前端可触发）
+  turtleScanSymbol:  (s: string, days = 365) => useApi().post<any>(`/turtle/scan/${s}`, undefined, { params: { days } }),
+  turtleScanAll:     (days = 365) => useApi().post<any>('/turtle/scan/all', undefined, { params: { days } })
 }

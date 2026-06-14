@@ -58,24 +58,24 @@ async def get_turtle_alerts_endpoint(since_minutes: int = 30):
 
 
 @router.post("/scan/{symbol}")
-async def scan_symbol_signals(symbol: str, period: str = "5min"):
-    """对指定品种扫描历史分钟数据，检测所有信号"""
-    sigs = detect_signals_for_symbol(symbol.upper(), period=period)
-    return {"symbol": symbol.upper(), "signals_found": len(sigs), "signals": sigs}
+async def scan_symbol_signals(symbol: str, period: str = "5min", days: int = 365):
+    """对指定品种扫描历史分钟数据，检测所有信号（v0.18.16: days 默认 365）"""
+    sigs = detect_signals_for_symbol(symbol.upper(), period=period, days=days)
+    return {"symbol": symbol.upper(), "period": period, "days": days, "signals_found": len(sigs), "signals": sigs}
 
 
 @router.post("/scan/all")
-async def scan_all_signals(period: str = "5min"):
-    """全量扫描所有品种历史信号"""
+async def scan_all_signals(period: str = "5min", days: int = 365):
+    """全量扫描所有品种历史信号（v0.18.16: days 默认 365）"""
     results = {}
     for sym in ALL_PRODUCTS:
         try:
-            sigs = detect_signals_for_symbol(sym, period=period)
+            sigs = detect_signals_for_symbol(sym, period=period, days=days)
             results[sym] = {"signals_found": len(sigs), "signals": sigs}
         except Exception as e:
             results[sym] = {"error": str(e)}
     total = sum(v.get("signals_found", 0) for v in results.values())
-    return {"total_signals": total, "details": results}
+    return {"period": period, "days": days, "total_signals": total, "details": results}
 
 
 @router.get("/signal/latest")
