@@ -135,24 +135,20 @@ function updateMarkers() {
 
   // 过滤有 bar_time 的 signal + 转 lightweight-charts 格式
   const markers = props.signals
-    .filter(s => s.bar_time && s.signal_type)
+    .filter((s): s is typeof s & { bar_time: string } => !!(s.bar_time && s.signal_type))
     .map(s => {
       const style = markerStyleFor(s.signal_type)
       return {
-        // lightweight-charts v4 接受 string 格式 'YYYY-MM-DD HH:MM:SS'，内部解析
-        time: s.bar_time as any,
+        // v0.18.17: K 线 setData 用 UTCTimestamp 数字；markers 必须也用 UTCTimestamp
+        // 否则 lightweight-charts 静默丢弃 markers（不显示无报错）
+        time: toUTCTimestamp(s.bar_time) as UTCTimestamp,
         position: style.position,
         color: style.color,
         shape: style.shape,
         text: style.text
       }
     })
-    .sort((a, b) => {
-      // 按时间排序（lightweight-charts 要求 markers 按时间升序）
-      const ta = typeof a.time === 'string' ? new Date(a.time).getTime() : a.time
-      const tb = typeof b.time === 'string' ? new Date(b.time).getTime() : b.time
-      return ta - tb
-    })
+    .sort((a, b) => a.time - b.time)
 
   try {
     series.setMarkers(markers as any)
