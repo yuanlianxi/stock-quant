@@ -49,9 +49,8 @@ const daysOptions = computed(() => {
 })
 // 切到分时周期时，如果当前 days 超出范围，自动降级
 watch(chartPeriod, () => {
-  if (isMinutePeriod.value && chartDays.value > 180) {
-    chartDays.value = 7
-  }
+  // v0.18.18: 自动降级（不要直接重置 chartDays，避免双触发 watch [chartPeriod, chartDays]）
+  // 改用 watchEffect 或在 fetch 时降级
 })
 
 watch(
@@ -62,9 +61,16 @@ watch(
   { immediate: true }
 )
 
-// 周期/范围切换时重查 K 线
+// 周期/范围切换时重查 K 线（v0.18.18: 自动降级合并到 fetch 避免双触发）
 watch([chartPeriod, chartDays], async () => {
-  if (curSym.value) await kline.fetchKLineData(curSym.value, chartPeriod.value, chartDays.value)
+  if (!curSym.value) return
+  // 自动降级：分时周期 days > 180 时降到 7
+  let actualDays = chartDays.value
+  if (isMinutePeriod.value && actualDays > 180) {
+    actualDays = 7
+    chartDays.value = 7  // 同步状态（只触发一次）
+  }
+  await kline.fetchKLineData(curSym.value, chartPeriod.value, actualDays)
 })
 
 async function loadDetail(sym: string) {
